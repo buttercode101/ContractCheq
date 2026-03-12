@@ -2,19 +2,36 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/360e8994-cbbb-40ee-8f93-e1c80f702703
+# ContractCheck SA
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js 20+
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Create `.env.local` (or export in shell) with:
+   - `OCR_SPACE_API_KEY=...`
+   - `GROQ_API_KEY=...`
+3. Start app + local API server:
    `npm run dev`
+4. Open `http://localhost:3000`
+
+## Deployment (Vercel)
+
+This repo now includes Vercel API routes:
+- `api/extract-text.js` (OCR.Space)
+- `api/analyze-text.js` (Groq)
+
+Set these in Vercel project environment variables (Production + Preview):
+- `OCR_SPACE_API_KEY`
+- `GROQ_API_KEY`
+
+If you see an error like `Unexpected token 'T'... is not valid JSON`, the frontend likely received an HTML/text error page instead of JSON from `/api/*` (usually missing route or env var). The app now reports a clearer non-JSON API error sample to help diagnose this quickly.
+
+## API split
+
+- `/api/extract-text`: OCR.Space extraction for image uploads and PDF OCR fallback.
+- `/api/analyze-text`: Groq legal risk analysis on extracted text.
+
+Provider API keys remain server-side.

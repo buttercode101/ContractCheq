@@ -23,7 +23,7 @@ import {
 import { Language, AnalysisResult, RiskLevel, RiskThresholds, FlaggedClause, ExportOptions } from './types';
 import { TRANSLATIONS, PRE_ANALYZED_SAMPLES, JARGON_EXPLANATIONS } from './constants';
 import { parsePDF } from './services/pdfService';
-import { analyzeContract } from './services/geminiService';
+import { extractTextWithOCR, analyzeContractText } from './services/analysisService';
 import { encryptData, decryptData } from './services/cryptoService';
 import Button from './components/Button';
 import Badge from './components/Badge';
@@ -147,6 +147,7 @@ const App: React.FC = () => {
   const [loadingText, setLoadingText] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isComparing, setIsComparing] = useState(false);
@@ -268,19 +269,40 @@ const App: React.FC = () => {
 
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      setError('Please upload a valid PDF document. Other formats are not yet supported.');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isPdf && !isImage) {
+      setError('Unsupported format. Upload PDF or image files only.');
       setIsDragging(false);
       return;
     }
 
-    setLoading(true); setProgress(10); setLoadingText('Extracting text...'); setError(null);
+    setLoading(true); setProgress(10); setLoadingText('Preparing document...'); setError(null); setOcrNotice(null);
     try {
-      const text = await parsePDF(file);
+      let text = '';
+
+      if (isPdf) {
+        setLoadingText('Extracting PDF text...');
+        const pdfText = await parsePDF(file);
+        const denseChars = pdfText.replace(/\s+/g, '').length;
+        if (denseChars >= 250) {
+          text = pdfText;
+        } else {
+          setLoadingText('Low text density detected. Running OCR.Space fallback...');
+          text = await extractTextWithOCR(file);
+          setOcrNotice('OCR fallback was used because this PDF appears to be scan-based. Check output for OCR errors.');
+        }
+      } else {
+        setLoadingText('Running OCR.Space on image...');
+        text = await extractTextWithOCR(file);
+        setOcrNotice('OCR was used for image extraction. Review text for recognition errors.');
+      }
+
       setRawText(text);
-      setLoadingText('Scanning for SA legal traps...');
+      setLoadingText('Analyzing extracted text with Groq...');
       setProgress(40);
-      const result = await analyzeContract(text);
+      const result = await analyzeContractText(text);
       setAnalysis(result);
       setPrivateNotes({});
     } catch (err: any) {
@@ -668,7 +690,7 @@ const App: React.FC = () => {
               >
                 <input 
                   type="file" 
-                  accept=".pdf" 
+                  accept=".pdf,image/*" 
                   className="absolute inset-0 opacity-0 cursor-pointer z-10" 
                   onChange={handleFileUpload} 
                 />
@@ -678,7 +700,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="space-y-3">
                     <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                      {isDragging ? 'Drop it now!' : 'Drop PDF or Click to Upload'}
+                      {isDragging ? 'Drop it now!' : 'Drop PDF/Image or Click to Upload'}
                     </h3>
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">
                       Privacy Guaranteed • SA Law Compliance • Instant Audit
@@ -701,6 +723,17 @@ const App: React.FC = () => {
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                   <p className="text-red-700 font-black text-sm">{error}</p>
                   <Button variant="ghost" size="sm" onClick={() => setError(null)}>Clear and Retry</Button>
+                </motion.div>
+              )}
+
+              {ocrNotice && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] text-center flex flex-col items-center gap-3"
+                >
+                  <Info className="w-6 h-6 text-amber-600" />
+                  <p className="text-amber-700 font-black text-sm">{ocrNotice}</p>
                 </motion.div>
               )}
 
