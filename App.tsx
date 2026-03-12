@@ -23,7 +23,7 @@ import {
 import { Language, AnalysisResult, RiskLevel, RiskThresholds, FlaggedClause, ExportOptions } from './types';
 import { TRANSLATIONS, PRE_ANALYZED_SAMPLES, JARGON_EXPLANATIONS } from './constants';
 import { parsePDF } from './services/pdfService';
-import { extractTextWithOCR, analyzeContractText, fetchApiVersion } from './services/analysisService';
+import { extractTextWithOCR, analyzeContractText } from './services/analysisService';
 import { encryptData, decryptData } from './services/cryptoService';
 import Button from './components/Button';
 import Badge from './components/Badge';
@@ -148,7 +148,6 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
-  const [apiVersion, setApiVersion] = useState<string>('unknown');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isComparing, setIsComparing] = useState(false);

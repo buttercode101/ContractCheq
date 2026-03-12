@@ -17,39 +17,9 @@
    `npm run dev`
 4. Open `http://localhost:3000`
 
-## Deployment (Vercel)
+## API split
 
-This repo includes Vercel API routes:
-- `api/extract-text.js` (OCR.Space)
-- `api/analyze-text.js` (Groq)
-- `api/version.js` (deployed version visibility)
-- `api/health.js` (env presence + health)
+- `/api/extract-text`: OCR.Space extraction for image uploads and PDF OCR fallback.
+- `/api/analyze-text`: Groq legal risk analysis on extracted text.
 
-Set these in Vercel environment variables (Production + Preview):
-- `OCR_SPACE_API_KEY`
-- `GROQ_API_KEY`
-
-## Diagnostics checklist
-
-1. Hit `/api/version` in deployed app and verify commit hash matches expected deploy.
-2. Hit `/api/health` and confirm `OCR_SPACE_API_KEY` and `GROQ_API_KEY` are both `true`.
-3. If analysis fails, inspect returned `error.code`:
-   - `GROQ_RATE_LIMIT`
-   - `GROQ_INVALID_JSON`
-   - `ANALYSIS_SCHEMA_FAIL`
-   - `OCR_PROVIDER_HTTP_ERROR`
-   - `OCR_EMPTY_TEXT`
-
-## API behavior
-
-- Every API response includes:
-  - `x-contractcheck-version`
-  - `x-request-id`
-- All API errors are structured as:
-  - `{ ok: false, error: { code, message, details } }`
-
-## Notes on free tiers
-
-Groq free-tier models may return variant JSON shapes or fenced JSON text. The backend now extracts JSON robustly and normalizes it to the strict frontend schema before validation.
-
-Provider API keys remain server-side.
+The browser no longer receives provider API keys directly.
