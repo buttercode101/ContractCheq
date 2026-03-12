@@ -202,6 +202,8 @@ const App: React.FC = () => {
     
     const saved = localStorage.getItem('contractcheck_vault');
     if (saved) setSavedAnalyses(JSON.parse(saved));
+
+    fetchApiVersion().then(setApiVersion);
   }, []);
 
   const saveToVault = async () => {
@@ -963,7 +965,7 @@ const App: React.FC = () => {
           </p>
           <div className="flex flex-col items-center gap-4">
             <p className="text-[11px] font-black text-slate-300 tracking-[0.5em] uppercase">ContractCheck SA</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.4 • Privacy-First Triage</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.5 • API {apiVersion.slice(0, 7)} • Privacy-First Triage</p>
           </div>
         </div>
       </footer>
