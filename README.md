@@ -2,19 +2,54 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/360e8994-cbbb-40ee-8f93-e1c80f702703
+# ContractCheck SA
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js 20+
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Create `.env.local` (or export in shell) with:
+   - `OCR_SPACE_API_KEY=...`
+   - `GROQ_API_KEY=...`
+3. Start app + local API server:
    `npm run dev`
+4. Open `http://localhost:3000`
+
+## Deployment (Vercel)
+
+This repo includes Vercel API routes:
+- `api/extract-text.js` (OCR.Space)
+- `api/analyze-text.js` (Groq)
+- `api/version.js` (deployed version visibility)
+- `api/health.js` (env presence + health)
+
+Set these in Vercel environment variables (Production + Preview):
+- `OCR_SPACE_API_KEY`
+- `GROQ_API_KEY`
+
+## Diagnostics checklist
+
+1. Hit `/api/version` in deployed app and verify commit hash matches expected deploy.
+2. Hit `/api/health` and confirm `OCR_SPACE_API_KEY` and `GROQ_API_KEY` are both `true`.
+3. If analysis fails, inspect returned `error.code`:
+   - `GROQ_RATE_LIMIT`
+   - `GROQ_INVALID_JSON`
+   - `ANALYSIS_SCHEMA_FAIL`
+   - `OCR_PROVIDER_HTTP_ERROR`
+   - `OCR_EMPTY_TEXT`
+
+## API behavior
+
+- Every API response includes:
+  - `x-contractcheck-version`
+  - `x-request-id`
+- All API errors are structured as:
+  - `{ ok: false, error: { code, message, details } }`
+
+## Notes on free tiers
+
+Groq free-tier models may return variant JSON shapes or fenced JSON text. The backend now extracts JSON robustly and normalizes it to the strict frontend schema before validation.
+
+Provider API keys remain server-side.
