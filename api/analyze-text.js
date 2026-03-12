@@ -1,5 +1,3 @@
-import { isValidAnalysisShape, normalizeAnalysisShape } from '../lib/analysisNormalizer.js';
-
 export const config = {
   runtime: 'nodejs'
 };
@@ -33,6 +31,24 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function isValidAnalysisShape(v) {
+  if (!v || typeof v !== 'object') return false;
+  if (!['LOW', 'MEDIUM', 'HIGH'].includes(v.overall_risk)) return false;
+  if (typeof v.overallRiskScore !== 'number') return false;
+  if (typeof v.overall_summary !== 'string') return false;
+  if (!v.financial_exposure_estimate || typeof v.financial_exposure_estimate !== 'object') return false;
+  if (!Array.isArray(v.risks)) return false;
+  return v.risks.every((r) =>
+    r && typeof r === 'object' &&
+    typeof r.clause_quote === 'string' &&
+    ['LOW', 'MEDIUM', 'HIGH'].includes(r.risk_level) &&
+    typeof r.riskScore === 'number' &&
+    typeof r.why_risky === 'string' &&
+    typeof r.what_to_do === 'string' &&
+    typeof r.act_reference === 'string'
+  );
+}
+
 async function readJsonBody(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
@@ -54,7 +70,7 @@ async function callGroqAnalyze(text, retry = false) {
     },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.1,
+      temperature: 0.2,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -80,13 +96,12 @@ async function callGroqAnalyze(text, retry = false) {
     throw new Error('Groq returned invalid JSON after retry.');
   }
 
-  const normalized = normalizeAnalysisShape(parsed);
-  if (!isValidAnalysisShape(normalized)) {
+  if (!isValidAnalysisShape(parsed)) {
     if (!retry) return callGroqAnalyze(text, true);
-    throw new Error('Groq response could not be normalized to required schema.');
+    throw new Error('Groq JSON schema validation failed.');
   }
 
-  return normalized;
+  return parsed;
 }
 
 export default async function handler(req, res) {

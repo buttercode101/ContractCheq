@@ -1,16 +1,5 @@
 import { AnalysisResult } from '../types';
 
-async function parseResponseJsonSafe(resp: Response): Promise<any> {
-  const raw = await resp.text();
-
-  try {
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    const sample = raw.slice(0, 120).replace(/\s+/g, ' ');
-    throw new Error(`API returned non-JSON response (status ${resp.status}). Sample: ${sample}`);
-  }
-}
-
 export async function extractTextWithOCR(file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);
@@ -20,7 +9,7 @@ export async function extractTextWithOCR(file: File): Promise<string> {
     body: form
   });
 
-  const data = await parseResponseJsonSafe(resp);
+  const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || 'OCR extraction failed.');
   return data.text as string;
 }
@@ -32,7 +21,7 @@ export async function analyzeContractText(text: string): Promise<AnalysisResult>
     body: JSON.stringify({ text })
   });
 
-  const data = await parseResponseJsonSafe(resp);
+  const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || 'Text analysis failed.');
   return data.analysis as AnalysisResult;
 }
