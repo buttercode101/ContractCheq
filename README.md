@@ -17,21 +17,9 @@
    `npm run dev`
 4. Open `http://localhost:3000`
 
-## Deployment (Vercel)
-
-This repo now includes Vercel API routes:
-- `api/extract-text.js` (OCR.Space)
-- `api/analyze-text.js` (Groq)
-
-Set these in Vercel project environment variables (Production + Preview):
-- `OCR_SPACE_API_KEY`
-- `GROQ_API_KEY`
-
-If you see an error like `Unexpected token 'T'... is not valid JSON`, the frontend likely received an HTML/text error page instead of JSON from `/api/*` (usually missing route or env var). The app now reports a clearer non-JSON API error sample to help diagnose this quickly.
-
 ## API split
 
 - `/api/extract-text`: OCR.Space extraction for image uploads and PDF OCR fallback.
 - `/api/analyze-text`: Groq legal risk analysis on extracted text.
 
-Provider API keys remain server-side.
+The browser no longer receives provider API keys directly.
