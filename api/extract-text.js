@@ -1,10 +1,12 @@
-import { APP_VERSION, makeError, makeSuccess, requestIdFrom, sendJson } from '../lib/apiUtils.js';
-import { MAX_FILE_SIZE_BYTES } from '../lib/documentFlow.js';
-import { ocrSpaceExtract } from '../lib/providerClient.js';
-
 export const config = {
   runtime: 'nodejs'
 };
+
+function send(res, status, payload) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
+}
 
 async function parseMultipartForm(req) {
   const request = new Request('http://localhost/api/extract-text', {
@@ -16,36 +18,50 @@ async function parseMultipartForm(req) {
   return request.formData();
 }
 
+async function ocrSpaceExtract(file) {
+  const key = process.env.OCR_SPACE_API_KEY;
+  if (!key) throw new Error('OCR_SPACE_API_KEY is missing in server environment.');
+
+  const form = new FormData();
+  form.append('apikey', key);
+  form.append('language', 'eng');
+  form.append('isOverlayRequired', 'false');
+  form.append('OCREngine', '2');
+  form.append('isCreateSearchablePdf', 'false');
+  form.append('file', file, file.name || 'upload.bin');
+
+  const resp = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    body: form
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`OCR.Space request failed (${resp.status}): ${text.slice(0, 160)}`);
+  }
+
+  const json = await resp.json();
+  if (json.IsErroredOnProcessing) {
+    const msg = json.ErrorMessage?.join(' ') || json.ErrorDetails || 'OCR failed.';
+    throw new Error(`OCR.Space error: ${msg}`);
+  }
+
+  const text = (json.ParsedResults || []).map((r) => r.ParsedText || '').join('\n').trim();
+  if (!text) throw new Error('OCR returned no text. Use a clearer image/PDF scan.');
+  return text;
+}
+
 export default async function handler(req, res) {
-  const reqId = requestIdFrom(req);
-
-  if (req.method === 'GET') {
-    return sendJson(res, 200, makeSuccess({ healthy: true, service: 'extract-text' }, reqId), reqId);
-  }
-
-  if (req.method !== 'POST') {
-    return sendJson(res, 405, makeError('METHOD_NOT_ALLOWED', 'Method not allowed.'), reqId);
-  }
+  if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
 
   try {
     const formData = await parseMultipartForm(req);
     const file = formData.get('file');
-    if (!(file instanceof File)) {
-      return sendJson(res, 400, makeError('INVALID_INPUT', 'File upload required.'), reqId);
-    }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return sendJson(res, 400, makeError('FILE_TOO_LARGE', `File too large. Max is ${Math.floor(MAX_FILE_SIZE_BYTES / (1024 * 1024))}MB.`), reqId);
-    }
+    if (!(file instanceof File)) return send(res, 400, { error: 'File upload required.' });
 
-    const text = await ocrSpaceExtract(file, process.env.OCR_SPACE_API_KEY);
-    return sendJson(res, 200, makeSuccess({ text, source: 'ocr_space' }, reqId), reqId);
+    const text = await ocrSpaceExtract(file);
+    return send(res, 200, { text, source: 'ocr_space' });
   } catch (error) {
-    const code = error?.code || 'OCR_INTERNAL_ERROR';
-    return sendJson(
-      res,
-      500,
-      makeError(code, error instanceof Error ? error.message : 'Internal server error', { version: APP_VERSION }),
-      reqId
-    );
+    return send(res, 500, { error: error instanceof Error ? error.message : 'Internal server error' });
   }
 }
