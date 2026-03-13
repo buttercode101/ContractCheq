@@ -1,11 +1,20 @@
-
 declare const pdfjsLib: any;
 
-export async function parsePDF(file: File): Promise<string> {
+export interface PDFParseResult {
+  text: string;
+  pageCount: number;
+}
+
+export async function parsePDF(file: File, options?: { maxPages?: number }): Promise<PDFParseResult> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let fullText = '';
 
+  const maxPages = options?.maxPages ?? 40;
+  if (pdf.numPages > maxPages) {
+    throw new Error(`PDF exceeds page limit (${pdf.numPages}). Maximum allowed is ${maxPages} pages.`);
+  }
+
+  let fullText = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
@@ -13,5 +22,5 @@ export async function parsePDF(file: File): Promise<string> {
     fullText += pageText + '\n';
   }
 
-  return fullText;
+  return { text: fullText, pageCount: pdf.numPages };
 }

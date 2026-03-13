@@ -4,13 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "sh -c \"node server.mjs & vite\"",
+    "dev:api": "node server.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:normalizer": "node scripts/test-normalizer.mjs",
+    "test:e2e": "node scripts/test-contract-e2e.mjs"
   },
   "dependencies": {
-    "@google/genai": "^1.40.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "motion": "^12.35.2",
