@@ -308,7 +308,11 @@ const App: React.FC = () => {
       setAnalysis(result);
       setPrivateNotes({});
     } catch (err: any) {
-      setError(err.message || 'Analysis failed. Please try a different PDF or check your connection.');
+      const message = err?.message || 'Analysis failed. Please try a different document or check your connection.';
+      setError(message);
+      if (err instanceof ApiClientError) {
+        setRequestAudit({ requestId: err.requestId, version: err.version, errorCode: err.code });
+      }
     } finally {
       setLoading(false); setProgress(0);
     }
@@ -724,6 +728,13 @@ const App: React.FC = () => {
                 >
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                   <p className="text-red-700 font-black text-sm">{error}</p>
+                  {requestAudit && (
+                    <div className="text-[10px] font-bold text-red-500 uppercase tracking-wider space-y-1">
+                      {requestAudit.errorCode && <div>Error Code: {requestAudit.errorCode}</div>}
+                      {requestAudit.requestId && <div>Request ID: {requestAudit.requestId}</div>}
+                      {requestAudit.version && <div>API Version: {String(requestAudit.version).slice(0, 7)}</div>}
+                    </div>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => setError(null)}>Clear and Retry</Button>
                 </motion.div>
               )}
