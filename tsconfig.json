@@ -27,6 +27,7 @@
     "noEmit": true
   },
   "exclude": [
+    "services/geminiService.ts",
     "migrated_prompt_history"
   ]
 }

@@ -9,8 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test:normalizer": "node scripts/test-normalizer.mjs",
-    "test:e2e": "node scripts/test-contract-e2e.mjs"
+    "test:normalizer": "node scripts/test-normalizer.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

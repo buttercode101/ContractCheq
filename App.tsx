@@ -23,8 +23,7 @@ import {
 import { Language, AnalysisResult, RiskLevel, RiskThresholds, FlaggedClause, ExportOptions } from './types';
 import { TRANSLATIONS, PRE_ANALYZED_SAMPLES, JARGON_EXPLANATIONS } from './constants';
 import { parsePDF } from './services/pdfService';
-import { ApiClientError, extractTextWithOCR, analyzeContractText, fetchApiVersion } from './services/analysisService';
-import { estimateAnalysisConfidence, runDocumentPipeline } from './lib/documentFlow';
+import { extractTextWithOCR, analyzeContractText } from './services/analysisService';
 import { encryptData, decryptData } from './services/cryptoService';
 import Button from './components/Button';
 import Badge from './components/Badge';
@@ -149,10 +148,6 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
-  const [apiVersion, setApiVersion] = useState<string>('unknown');
-  const [analysisConfidence, setAnalysisConfidence] = useState<number | null>(null);
-  const [confidenceWarning, setConfidenceWarning] = useState<string | null>(null);
-  const [requestAudit, setRequestAudit] = useState<{ requestId?: string; version?: string; errorCode?: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isComparing, setIsComparing] = useState(false);
@@ -276,41 +271,41 @@ const App: React.FC = () => {
 
     if (!file) return;
 
-    setLoading(true); setProgress(10); setLoadingText('Preparing document...');
-    setError(null); setOcrNotice(null); setConfidenceWarning(null); setRequestAudit(null);
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type.startsWith('image/');
 
+    if (!isPdf && !isImage) {
+      setError('Unsupported format. Upload PDF or image files only.');
+      setIsDragging(false);
+      return;
+    }
+
+    setLoading(true); setProgress(10); setLoadingText('Preparing document...'); setError(null); setOcrNotice(null);
     try {
-      const pipeline = await runDocumentPipeline(file, {
-        parsePdf: parsePDF,
-        extractOcr: extractTextWithOCR
-      });
+      let text = '';
 
-      if (pipeline.source === 'pdf_ocr_fallback') {
-        setLoadingText('Low text density detected. Running OCR.Space fallback...');
-        setOcrNotice('OCR fallback was used because this PDF appears to be scan-based. Check output for OCR errors.');
-      } else if (pipeline.source === 'image_ocr') {
-        setLoadingText('Running OCR.Space on image...');
-        setOcrNotice('OCR was used for image extraction. Review text for recognition errors.');
-      } else {
+      if (isPdf) {
         setLoadingText('Extracting PDF text...');
+        const pdfText = await parsePDF(file);
+        const denseChars = pdfText.replace(/\s+/g, '').length;
+        if (denseChars >= 250) {
+          text = pdfText;
+        } else {
+          setLoadingText('Low text density detected. Running OCR.Space fallback...');
+          text = await extractTextWithOCR(file);
+          setOcrNotice('OCR fallback was used because this PDF appears to be scan-based. Check output for OCR errors.');
+        }
+      } else {
+        setLoadingText('Running OCR.Space on image...');
+        text = await extractTextWithOCR(file);
+        setOcrNotice('OCR was used for image extraction. Review text for recognition errors.');
       }
 
-      setRawText(pipeline.text);
-      const confidence = estimateAnalysisConfidence({
-        text: pipeline.text,
-        usedOCR: pipeline.usedOCR,
-        denseChars: pipeline.denseChars,
-        pageCount: pipeline.pageCount
-      });
-      setAnalysisConfidence(confidence.score);
-      setConfidenceWarning(confidence.warning);
-
+      setRawText(text);
       setLoadingText('Analyzing extracted text with Groq...');
-      setProgress(45);
-
-      const result = await analyzeContractText(pipeline.text);
-      setAnalysis(result.analysis);
-      setRequestAudit({ requestId: result.requestId, version: result.version });
+      setProgress(40);
+      const result = await analyzeContractText(text);
+      setAnalysis(result);
       setPrivateNotes({});
     } catch (err: any) {
       const message = err?.message || 'Analysis failed. Please try a different document or check your connection.';
@@ -752,19 +747,6 @@ const App: React.FC = () => {
                 >
                   <Info className="w-6 h-6 text-amber-600" />
                   <p className="text-amber-700 font-black text-sm">{ocrNotice}</p>
-                </motion.div>
-              )}
-
-              {analysisConfidence !== null && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className={`p-6 border rounded-[2rem] text-center flex flex-col items-center gap-2 ${analysisConfidence < 75 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}`}
-                >
-                  <p className={`text-xs font-black uppercase tracking-widest ${analysisConfidence < 75 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                    Analysis Confidence: {analysisConfidence}%
-                  </p>
-                  {confidenceWarning && <p className="text-amber-700 font-bold text-sm">{confidenceWarning}</p>}
                 </motion.div>
               )}
 
