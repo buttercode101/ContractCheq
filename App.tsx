@@ -23,7 +23,8 @@ import {
 import { Language, AnalysisResult, RiskLevel, RiskThresholds, FlaggedClause, ExportOptions } from './types';
 import { TRANSLATIONS, PRE_ANALYZED_SAMPLES, JARGON_EXPLANATIONS } from './constants';
 import { parsePDF } from './services/pdfService';
-import { analyzeContract } from './services/geminiService';
+import { ApiClientError, extractTextWithOCR, analyzeContractText, fetchApiVersion } from './services/analysisService';
+import { estimateAnalysisConfidence, runDocumentPipeline } from './lib/documentFlow';
 import { encryptData, decryptData } from './services/cryptoService';
 import Button from './components/Button';
 import Badge from './components/Badge';
@@ -147,6 +148,11 @@ const App: React.FC = () => {
   const [loadingText, setLoadingText] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
+  const [apiVersion, setApiVersion] = useState<string>('unknown');
+  const [analysisConfidence, setAnalysisConfidence] = useState<number | null>(null);
+  const [confidenceWarning, setConfidenceWarning] = useState<string | null>(null);
+  const [requestAudit, setRequestAudit] = useState<{ requestId?: string; version?: string; errorCode?: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isComparing, setIsComparing] = useState(false);
@@ -201,6 +207,8 @@ const App: React.FC = () => {
     
     const saved = localStorage.getItem('contractcheck_vault');
     if (saved) setSavedAnalyses(JSON.parse(saved));
+
+    fetchApiVersion().then(setApiVersion);
   }, []);
 
   const saveToVault = async () => {
@@ -268,23 +276,48 @@ const App: React.FC = () => {
 
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      setError('Please upload a valid PDF document. Other formats are not yet supported.');
-      setIsDragging(false);
-      return;
-    }
+    setLoading(true); setProgress(10); setLoadingText('Preparing document...');
+    setError(null); setOcrNotice(null); setConfidenceWarning(null); setRequestAudit(null);
 
-    setLoading(true); setProgress(10); setLoadingText('Extracting text...'); setError(null);
     try {
-      const text = await parsePDF(file);
-      setRawText(text);
-      setLoadingText('Scanning for SA legal traps...');
-      setProgress(40);
-      const result = await analyzeContract(text);
-      setAnalysis(result);
+      const pipeline = await runDocumentPipeline(file, {
+        parsePdf: parsePDF,
+        extractOcr: extractTextWithOCR
+      });
+
+      if (pipeline.source === 'pdf_ocr_fallback') {
+        setLoadingText('Low text density detected. Running OCR.Space fallback...');
+        setOcrNotice('OCR fallback was used because this PDF appears to be scan-based. Check output for OCR errors.');
+      } else if (pipeline.source === 'image_ocr') {
+        setLoadingText('Running OCR.Space on image...');
+        setOcrNotice('OCR was used for image extraction. Review text for recognition errors.');
+      } else {
+        setLoadingText('Extracting PDF text...');
+      }
+
+      setRawText(pipeline.text);
+      const confidence = estimateAnalysisConfidence({
+        text: pipeline.text,
+        usedOCR: pipeline.usedOCR,
+        denseChars: pipeline.denseChars,
+        pageCount: pipeline.pageCount
+      });
+      setAnalysisConfidence(confidence.score);
+      setConfidenceWarning(confidence.warning);
+
+      setLoadingText('Analyzing extracted text with Groq...');
+      setProgress(45);
+
+      const result = await analyzeContractText(pipeline.text);
+      setAnalysis(result.analysis);
+      setRequestAudit({ requestId: result.requestId, version: result.version });
       setPrivateNotes({});
     } catch (err: any) {
-      setError(err.message || 'Analysis failed. Please try a different PDF or check your connection.');
+      const message = err?.message || 'Analysis failed. Please try a different document or check your connection.';
+      setError(message);
+      if (err instanceof ApiClientError) {
+        setRequestAudit({ requestId: err.requestId, version: err.version, errorCode: err.code });
+      }
     } finally {
       setLoading(false); setProgress(0);
     }
@@ -668,7 +701,7 @@ const App: React.FC = () => {
               >
                 <input 
                   type="file" 
-                  accept=".pdf" 
+                  accept=".pdf,image/*" 
                   className="absolute inset-0 opacity-0 cursor-pointer z-10" 
                   onChange={handleFileUpload} 
                 />
@@ -678,7 +711,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="space-y-3">
                     <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                      {isDragging ? 'Drop it now!' : 'Drop PDF or Click to Upload'}
+                      {isDragging ? 'Drop it now!' : 'Drop PDF/Image or Click to Upload'}
                     </h3>
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">
                       Privacy Guaranteed • SA Law Compliance • Instant Audit
@@ -700,7 +733,38 @@ const App: React.FC = () => {
                 >
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                   <p className="text-red-700 font-black text-sm">{error}</p>
+                  {requestAudit && (
+                    <div className="text-[10px] font-bold text-red-500 uppercase tracking-wider space-y-1">
+                      {requestAudit.errorCode && <div>Error Code: {requestAudit.errorCode}</div>}
+                      {requestAudit.requestId && <div>Request ID: {requestAudit.requestId}</div>}
+                      {requestAudit.version && <div>API Version: {String(requestAudit.version).slice(0, 7)}</div>}
+                    </div>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => setError(null)}>Clear and Retry</Button>
+                </motion.div>
+              )}
+
+              {ocrNotice && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] text-center flex flex-col items-center gap-3"
+                >
+                  <Info className="w-6 h-6 text-amber-600" />
+                  <p className="text-amber-700 font-black text-sm">{ocrNotice}</p>
+                </motion.div>
+              )}
+
+              {analysisConfidence !== null && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className={`p-6 border rounded-[2rem] text-center flex flex-col items-center gap-2 ${analysisConfidence < 75 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}`}
+                >
+                  <p className={`text-xs font-black uppercase tracking-widest ${analysisConfidence < 75 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    Analysis Confidence: {analysisConfidence}%
+                  </p>
+                  {confidenceWarning && <p className="text-amber-700 font-bold text-sm">{confidenceWarning}</p>}
                 </motion.div>
               )}
 
@@ -930,7 +994,7 @@ const App: React.FC = () => {
           </p>
           <div className="flex flex-col items-center gap-4">
             <p className="text-[11px] font-black text-slate-300 tracking-[0.5em] uppercase">ContractCheck SA</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.4 • Privacy-First Triage</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.5 • API {apiVersion.slice(0, 7)} • Privacy-First Triage</p>
           </div>
         </div>
       </footer>
