@@ -30,6 +30,11 @@ export interface AnalysisResult {
   overall_summary: string;
   financial_exposure_estimate: FinancialExposure;
   risks: FlaggedClause[];
+  extracted_text?: string;
+  document_type?: string;
+  signatures_detected?: boolean;
+  stamps_detected?: boolean;
+  handwriting_detected?: boolean;
 }
 
 export interface SavedAnalysis {

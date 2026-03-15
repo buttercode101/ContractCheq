@@ -18,13 +18,21 @@ import {
   Search,
   CheckCircle2,
   AlertTriangle,
-  Info
+  Info,
+  Camera,
+  Image as ImageIcon,
+  Signature,
+  Stamp,
+  PenTool
 } from 'lucide-react';
 import { Language, AnalysisResult, RiskLevel, RiskThresholds, FlaggedClause, ExportOptions } from './types';
 import { TRANSLATIONS, PRE_ANALYZED_SAMPLES, JARGON_EXPLANATIONS } from './constants';
 import { parsePDF } from './services/pdfService';
-import { extractTextWithOCR, analyzeContractText } from './services/analysisService';
+import { analyzeContract, classifyAndOCR } from './services/geminiService';
+import { compressImage } from './services/imageService';
 import { encryptData, decryptData } from './services/cryptoService';
+import { generateHash, getCachedAnalysis, cacheAnalysis } from './services/cacheService';
+import { runHeuristics, HeuristicIssue } from './services/heuristicsService';
 import Button from './components/Button';
 import Badge from './components/Badge';
 import Onboarding from './components/Onboarding';
@@ -142,12 +150,12 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [heuristicIssues, setHeuristicIssues] = useState<HeuristicIssue[]>([]);
   const [rawText, setRawText] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isComparing, setIsComparing] = useState(false);
@@ -202,8 +210,6 @@ const App: React.FC = () => {
     
     const saved = localStorage.getItem('contractcheck_vault');
     if (saved) setSavedAnalyses(JSON.parse(saved));
-
-    fetchApiVersion().then(setApiVersion);
   }, []);
 
   const saveToVault = async () => {
@@ -271,48 +277,79 @@ const App: React.FC = () => {
 
     if (!file) return;
 
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isPDF = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
 
-    if (!isPdf && !isImage) {
-      setError('Unsupported format. Upload PDF or image files only.');
+    if (!isPDF && !isImage) {
+      setError('Please upload a valid PDF or image (JPEG, PNG, WebP).');
       setIsDragging(false);
       return;
     }
 
-    setLoading(true); setProgress(10); setLoadingText('Preparing document...'); setError(null); setOcrNotice(null);
+    setLoading(true); setProgress(10); setLoadingText(isPDF ? 'Extracting text...' : 'Optimizing image...'); setError(null);
+    setHeuristicIssues([]);
+    
     try {
-      let text = '';
+      let analysisInput;
+      let contentForHash = "";
 
-      if (isPdf) {
-        setLoadingText('Extracting PDF text...');
-        const pdfText = await parsePDF(file);
-        const denseChars = pdfText.replace(/\s+/g, '').length;
-        if (denseChars >= 250) {
-          text = pdfText;
-        } else {
-          setLoadingText('Low text density detected. Running OCR.Space fallback...');
-          text = await extractTextWithOCR(file);
-          setOcrNotice('OCR fallback was used because this PDF appears to be scan-based. Check output for OCR errors.');
-        }
+      if (isPDF) {
+        const text = await parsePDF(file);
+        setRawText(text);
+        analysisInput = { text };
+        contentForHash = text;
       } else {
-        setLoadingText('Running OCR.Space on image...');
-        text = await extractTextWithOCR(file);
-        setOcrNotice('OCR was used for image extraction. Review text for recognition errors.');
+        const compressed = await compressImage(file);
+        analysisInput = { image: compressed };
+        setRawText("[Image Analysis - Text transcription in progress...]");
+        contentForHash = compressed.data; // Use base64 for hash
       }
 
-      setRawText(text);
-      setLoadingText('Analyzing extracted text with Groq...');
-      setProgress(40);
-      const result = await analyzeContractText(text);
+      // 1. Check Cache
+      const hash = await generateHash(contentForHash);
+      const cached = await getCachedAnalysis(hash);
+      
+      if (cached) {
+        setLoadingText('Restoring from vault...');
+        setProgress(90);
+        setTimeout(() => {
+          setAnalysis(cached);
+          if (cached.extracted_text) setRawText(cached.extracted_text);
+          setLoading(false);
+          setProgress(0);
+        }, 500);
+        return;
+      }
+
+      // 2. Run Heuristics (Immediate feedback)
+      let extractedText = isPDF ? contentForHash : "";
+      let docType = "";
+
+      if (!isPDF) {
+        setLoadingText('Performing OCR & Classification...');
+        setProgress(30);
+        const ocr = await classifyAndOCR(analysisInput);
+        extractedText = ocr.text;
+        docType = ocr.type;
+        setRawText(extractedText);
+      }
+
+      if (extractedText) {
+        const issues = runHeuristics(extractedText);
+        setHeuristicIssues(issues);
+      }
+
+      setLoadingText('Scanning for SA legal traps...');
+      setProgress(60);
+      const result = await analyzeContract(analysisInput, extractedText, docType);
+      
+      // 3. Cache Result
+      await cacheAnalysis(hash, result);
+      
       setAnalysis(result);
       setPrivateNotes({});
     } catch (err: any) {
-      const message = err?.message || 'Analysis failed. Please try a different document or check your connection.';
-      setError(message);
-      if (err instanceof ApiClientError) {
-        setRequestAudit({ requestId: err.requestId, version: err.version, errorCode: err.code });
-      }
+      setError(err.message || 'Analysis failed. Please try a different document or check your connection.');
     } finally {
       setLoading(false); setProgress(0);
     }
@@ -702,14 +739,20 @@ const App: React.FC = () => {
                 />
                 <div className="space-y-8 relative z-0 pointer-events-none">
                   <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto transition-all duration-500 ${isDragging ? 'bg-blue-600 text-white scale-110 rotate-12' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:scale-110'}`}>
-                    <Upload className="w-10 h-10" />
+                    {isDragging ? <Upload className="w-10 h-10" /> : (
+                      <div className="flex gap-2">
+                        <FileText className="w-6 h-6" />
+                        <ImageIcon className="w-6 h-6" />
+                        <Camera className="w-6 h-6" />
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-3">
                     <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                      {isDragging ? 'Drop it now!' : 'Drop PDF/Image or Click to Upload'}
+                      {isDragging ? 'Drop it now!' : 'Drop PDF/Photo or Click to Upload'}
                     </h3>
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">
-                      Privacy Guaranteed • SA Law Compliance • Instant Audit
+                      Privacy Guaranteed • SA Law Compliance • Multimodal Scan
                     </p>
                   </div>
                   {!isDragging && (
@@ -728,25 +771,7 @@ const App: React.FC = () => {
                 >
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                   <p className="text-red-700 font-black text-sm">{error}</p>
-                  {requestAudit && (
-                    <div className="text-[10px] font-bold text-red-500 uppercase tracking-wider space-y-1">
-                      {requestAudit.errorCode && <div>Error Code: {requestAudit.errorCode}</div>}
-                      {requestAudit.requestId && <div>Request ID: {requestAudit.requestId}</div>}
-                      {requestAudit.version && <div>API Version: {String(requestAudit.version).slice(0, 7)}</div>}
-                    </div>
-                  )}
                   <Button variant="ghost" size="sm" onClick={() => setError(null)}>Clear and Retry</Button>
-                </motion.div>
-              )}
-
-              {ocrNotice && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] text-center flex flex-col items-center gap-3"
-                >
-                  <Info className="w-6 h-6 text-amber-600" />
-                  <p className="text-amber-700 font-black text-sm">{ocrNotice}</p>
                 </motion.div>
               )}
 
@@ -797,6 +822,33 @@ const App: React.FC = () => {
                   animate={{ width: `${progress}%` }}
                 />
               </div>
+
+              {heuristicIssues.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="max-w-2xl mx-auto space-y-6 text-left pt-12"
+                >
+                  <div className="flex items-center gap-3 px-6">
+                    <Zap className="w-5 h-5 text-amber-500 animate-pulse" />
+                    <h4 className="font-black text-slate-900 uppercase tracking-widest text-[10px]">Quick Scan Findings (Heuristics)</h4>
+                  </div>
+                  <div className="grid gap-4">
+                    {heuristicIssues.map((issue, idx) => (
+                      <div key={idx} className="bg-amber-50/50 border border-amber-100 p-6 rounded-[2rem] flex gap-4 items-start shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black text-amber-900 uppercase tracking-tight">Potential {issue.risk_level} Risk</p>
+                          <p className="text-sm text-slate-700 font-medium italic">"{issue.clause}"</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{issue.why_risky}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
@@ -832,6 +884,35 @@ const App: React.FC = () => {
                     <RiskGauge score={adjustedAnalysis.overallRiskScore} level={adjustedAnalysis.overall_risk} label={`${adjustedAnalysis.overall_risk} risk`} clauses={adjustedAnalysis.risks} />
                     <div className="space-y-6 flex-1 text-center md:text-left">
                       <h3 className="text-4xl font-black text-slate-900 tracking-tight">AI Audit Result</h3>
+                      
+                      {/* Document Metadata Badges */}
+                      <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                        {adjustedAnalysis.document_type && (
+                          <div className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                            <span className="text-[10px] font-black text-blue-700 uppercase">{adjustedAnalysis.document_type}</span>
+                          </div>
+                        )}
+                        {adjustedAnalysis.signatures_detected && (
+                          <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2">
+                            <Signature className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-black text-emerald-700 uppercase">Signatures Found</span>
+                          </div>
+                        )}
+                        {adjustedAnalysis.stamps_detected && (
+                          <div className="px-4 py-2 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-2">
+                            <Stamp className="w-3.5 h-3.5 text-purple-600" />
+                            <span className="text-[10px] font-black text-purple-700 uppercase">Official Stamps</span>
+                          </div>
+                        )}
+                        {adjustedAnalysis.handwriting_detected && (
+                          <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
+                            <PenTool className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-[10px] font-black text-amber-700 uppercase">Handwriting Detected</span>
+                          </div>
+                        )}
+                      </div>
+
                       <p className="text-slate-600 leading-relaxed font-medium">{adjustedAnalysis.overall_summary}</p>
                       <div className="flex flex-wrap justify-center md:justify-start gap-4">
                         <div className="px-6 py-4 bg-slate-900 rounded-2xl text-white shadow-xl">
@@ -976,7 +1057,7 @@ const App: React.FC = () => {
           </p>
           <div className="flex flex-col items-center gap-4">
             <p className="text-[11px] font-black text-slate-300 tracking-[0.5em] uppercase">ContractCheck SA</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.5 • API {apiVersion.slice(0, 7)} • Privacy-First Triage</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Version 1.0.4 • Privacy-First Triage</p>
           </div>
         </div>
       </footer>
