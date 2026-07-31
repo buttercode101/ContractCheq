@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-cream: #0e0f12;
+  --color-ink: #f7f6f2;
+  --color-mid: #ffffff;
+  --color-sub: #5c6573;
+  --color-mute: #7e8796;
+  --color-lime: #94b93b;
+  --color-lime-dark: #7ea726;
+  --color-lime-light: #b8e34a;
+  --color-red: #d13a27;
+  --color-surface: #14161a;
+  --color-elevated: #1c1e24;
+
+  --color-risk-high: #ef4444;
+  --color-risk-high-bg: rgba(239,68,68,0.12);
+  --color-risk-medium: #f59e0b;
+  --color-risk-medium-bg: rgba(245,158,11,0.12);
+  --color-risk-low: #10b981;
+  --color-risk-low-bg: rgba(16,185,129,0.12);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-lime ring-offset-2 ring-offset-cream rounded-sm;
+  }
+
+  html { scroll-behavior: smooth; }
+  html, body, #root { min-height: 100%; }
+
+  body {
+    @apply bg-cream text-ink font-sans antialiased overflow-x-hidden selection:bg-lime/80 selection:text-cream;
+    text-rendering: optimizeLegibility;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(148,185,59,0.06), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(148,185,59,0.03), transparent 50%);
+  }
+
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+}
+
+@layer components {
+  .shell { @apply max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8; }
+  .glass-panel { @apply border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.3)]; }
+  .focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-cream; }
+
+  .risk-dot {
+    @apply w-2 h-2 rounded-full inline-block;
+  }
+  .risk-dot-high { @apply bg-risk-high shadow-[0_0_8px_rgba(239,68,68,0.5)]; }
+  .risk-dot-medium { @apply bg-risk-medium shadow-[0_0_8px_rgba(245,158,11,0.5)]; }
+  .risk-dot-low { @apply bg-risk-low shadow-[0_0_8px_rgba(16,185,129,0.5)]; }
+
+  .card-surface {
+    @apply bg-surface border border-white/[0.06] rounded-2xl;
+  }
+  .card-elevated {
+    @apply bg-elevated border border-white/[0.08] rounded-2xl shadow-lg;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(148,185,59,0.3) transparent; }
+  .text-balance { text-wrap: balance; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(148,185,59,0.3); }
+  50% { box-shadow: 0 0 24px rgba(148,185,59,0.6); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gauge-fill {
+  from { stroke-dasharray: 0 200; }
+}
+
+.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(148,185,59,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+.animate-slide-up { animation: slideUp 0.5s var(--ease-out-expo) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

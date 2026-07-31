@@ -71,3 +71,13 @@ export interface ExportOptions {
   includeNotes: boolean;
   includeRecommendations: boolean;
 }
+
+export interface HeuristicIssue {
+  clause: string;
+  risk_level: RiskLevel;
+  why_risky: string;
+  what_to_do: string;
+  act_reference: string;
+}
+
+export type ViewState = 'hero' | 'loading' | 'results';
