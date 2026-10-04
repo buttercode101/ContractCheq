@@ -21,6 +21,7 @@
 @media(max-width:640px){.app-shell{padding:0 20px 24px}.site-header{min-height:0;padding:20px 0 13px;display:block}.brand-name{font-size:25px}.brand-mark{width:32px;height:37px}.site-nav{margin-top:15px;justify-content:space-between;gap:2px}.nav-item{padding:8px 12px;min-height:42px;font-size:11px}.hero-grid{display:flex;flex-direction:column;gap:27px;padding:34px 0 32px;align-items:stretch}.hero-title{font-size:51px;letter-spacing:-1.5px;margin:17px 0}.hero-copy{font-size:13px;line-height:1.8;max-width:none}.hero-proof{margin-top:17px;gap:8px 17px;font-size:10px}.upload-panel{padding:20px;border-radius:16px}.drop-area{padding:24px 12px}.how-grid{grid-template-columns:1fr;padding:22px 0;gap:19px}.how-item p{font-size:12px}.example-grid{grid-template-columns:1fr}.example-card{min-height:0;padding:21px}.example-top{margin-bottom:13px}.example-card .example-link{padding-top:15px}.examples-section{padding:32px 0}.section-heading{align-items:start}.section-heading h2{font-size:30px}.section-heading button{white-space:normal;text-align:right}.sample-links{gap:7px 18px}.price-strip{padding:23px;display:block}.price-strip button{margin-top:18px;width:100%}.site-footer{margin-top:32px;display:block}.site-footer>span+span{display:block;margin-top:6px}.pricing-content{padding-top:30px}.pricing-content>h1{font-size:38px}.pricing-content>.grid{gap:18px}.pricing-content>.grid>div{padding:24px}.report-content{padding-top:24px}.report-content .p-6{padding:22px}.report-content .text-base{font-size:14px}.report-content .grid-cols-2{gap:9px}.report-content>div:first-child{flex-wrap:wrap}.report-content>div:first-child>div{font-size:10px}.report-content>div:first-child>button:last-child{padding:12px;font-size:10px}.privacy-note{font-size:10px}.site-nav>span{font-size:9px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
 
+.modal-backdrop{position:fixed;inset:0;z-index:100;background:#102c2660;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}.checkout-modal{position:relative;width:100%;max-width:440px;background:#fff;border-radius:18px;padding:34px;box-shadow:0 25px 80px #102c2630}.modal-close{position:absolute;right:13px;top:10px;width:36px;height:36px;font-size:24px;color:var(--muted)}.checkout-modal h2{font-size:35px;line-height:1.15;margin:19px 0 12px}.checkout-modal p{font-size:12px;line-height:1.8;color:var(--muted)}.checkout-modal form{margin-top:24px}.checkout-modal label{font-size:11px;font-weight:600;display:block;margin-bottom:8px}.checkout-modal input{width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;font-size:16px}.checkout-modal form button{width:100%;margin:16px 0}.checkout-note{text-align:center;font-size:10px!important}.notice-banner{background:#e8f2e7;border:1px solid #bbd1b9;border-radius:10px;margin-top:20px;padding:16px;font-size:13px;display:flex;justify-content:space-between;gap:14px}.report-content h2,.report-content p{overflow-wrap:anywhere}
 </style>
 </head>
 <body class="min-h-screen">
@@ -79,6 +80,8 @@ function App() {
   var _en = useState(false); var enrichLLM = _en[0]; var setEnrichLLM = _en[1];
   var _sc = useState(false); var scanning = _sc[0]; var setScanning = _sc[1];
   var _sm = useState(''); var scanMsg = _sm[0]; var setScanMsg = _sm[1];
+  const [checkout,setCheckout] = useState(null);
+  const [notice,setNotice] = useState('');
   const [dragging,setDragging] = useState(false);
   var _er = useState(''); var error = _er[0]; var setError = _er[1];
   var _r = useState(null); var result = _r[0]; var setResult = _r[1];
@@ -168,11 +171,11 @@ function App() {
   const startPay = ({amount, label, product})=>{
     const key = config.paystackPublicKey;
     if(!key || !window.PaystackPop){
-      alert('Checkout is not available yet. Please try again later.');
+      setError('Checkout is unavailable right now. Please try again shortly.');window.scrollTo({top:0});
       return;
     }
-    const email = payEmail || prompt('Email for receipt & credits:') || '';
-    if(!email) return;
+    const email = payEmail.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setCheckout({amount,product});return;}
     setPayEmail(email);
     track('paywall_click',{product,amount});
     const handler = PaystackPop.setup({
@@ -203,10 +206,10 @@ function App() {
             track('unlock_success',{via:'payment'});
           } else {
             setCredits(c=>Math.max(c, v.credits||0));
-            alert('Credits added: '+v.credits+'. Use them to unlock any report.');
+            setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
           }
         }).catch(err=>{
-          alert('Payment received but unlock failed: '+err.message+'\nRef: '+response.reference);
+          setError('Payment verification or unlock failed: '+err.message+'. Keep your reference: '+response.reference);window.scrollTo({top:0});
         });
       },
       onClose: function(){ track('pay_close',{product}); }
@@ -216,12 +219,13 @@ function App() {
 
   const unlock = async ()=>{
     if(!result) return;
+    try {
     if(credits>0 && payEmail && paymentRef){
       const full = await fetch(API+'/api/unlock-analysis',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({analysisId: result._id, reference:paymentRef, email: payEmail})
       }).then(r=>r.json());
-      if(full.error){ alert(full.error); return; }
+      if(full.error){ setError(full.error);window.scrollTo({top:0});return; }
       setResult(full);
       setCredits(full.credits||0);
       setUnlocked(u=>[...new Set([...u, result._id])]);
@@ -229,6 +233,7 @@ function App() {
       return;
     }
     startPay({amount: config.prices.single, label:'Full Report R19', product:'single'});
+    } catch(e){setError('Unable to unlock this report. Please check your connection and try again.');window.scrollTo({top:0});}
   };
 
   function exportPdf() {
@@ -551,7 +556,7 @@ function App() {
           h('li', null, 'We do not replace a qualified attorney for high-stakes decisions')
         ),
         h('h2', {className: 'font-bold text-slate-900 pt-2'}, 'Optional AI enrichment'),
-        h('p', null, 'If you tick “AI enrichment” on upload, Groq may add extra suggested flags and TinyFish may attach public web research notes. The core SA/UK rule engine always runs first. AI findings are labelled “AI-suggested”.'),
+        h('p', null, 'If you enable “Add AI insights” on upload, Groq may add extra suggested flags and TinyFish may attach public web research notes. The core SA/UK rule engine always runs first. AI findings are labelled “AI-suggested”.'),
         h('h2', {className: 'font-bold text-slate-900 pt-2'}, 'Payments & credits'),
         h('p', null, 'Paystack processes card payments in ZAR. Pack credits are linked to your verified payment receipt and email. Keep both to use your remaining credits and contact support.')
       ),
@@ -563,7 +568,7 @@ function App() {
     body = h('section', {className: 'pt-10 max-w-2xl mx-auto space-y-4 text-[14px] text-slate-700'},
       h('h1', {className: 'serif text-3xl font-bold'}, 'Privacy Policy'),
       h('p', null, 'Files are processed to extract text and produce a risk report. We do not sell your documents.'),
-      h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results expire after 48 hours; expired records are removed by the daily cleanup so you can unlock after payment.'),
+      h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results are available for 48 hours so you can unlock them after payment. Expired records are removed by the daily cleanup.'),
       h('p', null, 'If you enable AI enrichment, text excerpts are sent to Groq and/or TinyFish under their terms. Disable AI enrichment to keep analysis on our rules engine only.'),
       h('p', null, 'Payments are processed by Paystack. We receive payment confirmation, not your full card number.'),
       h('button', {onClick: function() { setView('landing'); }, className: 'text-sm font-semibold text-blue-600'}, '← Back')
@@ -585,7 +590,7 @@ function App() {
     body = h('section', {className: 'pt-10 max-w-lg mx-auto'},
       h('h1', {className: 'serif text-3xl font-bold text-center'}, 'Contact'),
       h('p', {className: 'mt-4 text-center text-sm text-slate-600'}, 'Support & payment issues'),
-      h('p', {className: 'mt-6 text-center text-sm'}, 'Email: ', h('a', {className: 'text-blue-600 font-semibold', href: 'mailto:support@contractcheck.local'}, 'support@contractcheck.local')),
+      h('p', {className: 'mt-6 text-center text-sm text-slate-600'}, 'A support email has not been published yet. Keep your payment reference and receipt email if you experience an unlock problem.'),
       h('p', {className: 'mt-2 text-center text-xs text-slate-500'}, 'Include your Paystack reference for payment problems.'),
       h('button', {onClick: function() { setView('landing'); }, className: 'mt-6 block mx-auto text-sm font-semibold text-blue-600'}, '← Back')
     );
@@ -608,7 +613,9 @@ function App() {
       )
     ),
     error && h('div', {className:'error-banner',role:'alert'}, error),
+    notice && h('div',{role:'status',className:'notice-banner'},notice,h('button',{onClick:()=>setNotice(''),'aria-label':'Dismiss notification'},'×')),
     h('main',{id:'main-content'},body),
+    checkout && h('div',{className:'modal-backdrop',onKeyDown:e=>{if(e.key==='Escape'){setCheckout(null);return;}if(e.key==='Tab'){const items=e.currentTarget.querySelectorAll('button,input');const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}},h('section',{role:'dialog','aria-modal':true,'aria-labelledby':'checkout-title',className:'checkout-modal'},h('button',{className:'modal-close','aria-label':'Close checkout',onClick:()=>setCheckout(null)},'×'),h('div',{className:'eyebrow'},'SECURE CHECKOUT'),h('h2',{id:'checkout-title',className:'serif'},'Where should your receipt go?'),h('p',null,'Use this email with your payment reference to access your report credits.'),h('form',{onSubmit:e=>{e.preventDefault();const opts=checkout;setCheckout(null);startPay(opts);}},h('label',{htmlFor:'receipt-email'},'Email address'),h('input',{id:'receipt-email',type:'email',required:true,autoFocus:true,autoComplete:'email',value:payEmail,placeholder:'you@example.com',onChange:e=>setPayEmail(e.target.value)}),h('button',{type:'submit',className:'primary-button'},'Continue to Paystack · R'+(checkout.amount/100))),h('p',{className:'checkout-note'},'Card details are handled by Paystack. This opens secure checkout.'))),
     h('footer', {className:'site-footer'},h('span',null,'ContractCheck · South Africa & United Kingdom'),h('span',null,'Check & flag only. Not legal advice. © '+new Date().getFullYear())
     )
   );
