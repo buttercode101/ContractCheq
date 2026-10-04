@@ -1,7 +1,7 @@
 {
   "name": "contractcheck-sa",
   "version": "3.0.0",
-  "description": "ContractCheck SA \u2014 cheapest SA/UK AI contract risk triage. Check & Flag Only.",
+  "description": "ContractCheck SA — cheapest SA/UK AI contract risk triage. Check & Flag Only.",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -13,6 +13,7 @@
     "node": "24.x"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "@tesseract.js-data/eng": "^1.0.0",
     "@vercel/blob": "^2.8.0",
     "cors": "^2.8.6",

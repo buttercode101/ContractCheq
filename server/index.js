@@ -55,6 +55,10 @@ function cleanup(filePath) {
 }
 
 async function extractFromPdf(filePath) {
+  const graphics = require('@napi-rs/canvas');
+  globalThis.DOMMatrix ||= graphics.DOMMatrix;
+  globalThis.ImageData ||= graphics.ImageData;
+  globalThis.Path2D ||= graphics.Path2D;
   const { PDFParse } = require('pdf-parse');
   const parser = new PDFParse({data:fs.readFileSync(filePath)});
   try {
