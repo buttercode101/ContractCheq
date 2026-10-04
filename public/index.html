@@ -14,6 +14,13 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
   body{font-family:'DM Sans',system-ui,sans-serif;background:#f8fafc;color:#0f172a}
   .serif{font-family:'Instrument Serif',Georgia,serif}
+
+:root{--ink:#182c29;--muted:#62736f;--accent:#166653;--line:#dce5df;--paper:#f5f7f2}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}button,a,input,textarea{-webkit-tap-highlight-color:transparent}button,a,label{touch-action:manipulation}button{transition:background .18s,box-shadow .18s,transform .18s}button:disabled{opacity:.55;cursor:wait}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,label:focus-within{outline:3px solid #6dba98;outline-offset:4px}button:hover{transform:translateY(-1px)}.serif{font-family:'Instrument Serif',Georgia,serif}.app-shell{max-width:1160px;margin:auto;padding:0 40px 32px}.site-header{min-height:100px;display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:12px;flex-shrink:0}.brand-mark{width:36px;height:42px;background:var(--ink);color:white;border-radius:8px 8px 16px 8px;display:grid;place-items:center;font-size:18px}.brand-name{font-size:27px;letter-spacing:-.7px}.brand-sub{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted)}.site-nav{display:flex;gap:5px;align-items:center}.nav-item{padding:10px 13px;min-height:44px;font-size:12px;font-weight:600;border-radius:8px;color:var(--muted)}.nav-item.active{background:#e5ece5;color:var(--ink)}.hero-grid{display:grid;grid-template-columns:1.05fr 1fr;align-items:center;gap:64px;padding:72px 0 56px}.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.9px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:9px}.eyebrow:before{content:'';width:22px;height:1px;background:var(--accent)}.hero-title{font-size:clamp(44px,5.3vw,70px);line-height:1.04;letter-spacing:-1.8px;margin:23px 0}.hero-title em{color:var(--accent);font-weight:400}.hero-copy{color:var(--muted);font-size:15px;line-height:1.8;max-width:410px}.hero-proof{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:26px;font-size:11px;color:var(--muted)}.hero-proof span:before{content:'✓';margin-right:6px;color:var(--accent)}.upload-panel{background:white;border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 12px 40px #182c2908}.panel-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px}.panel-heading h2{font-size:17px;font-weight:600}.step-tag{font-size:10px;color:var(--muted)}.country-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f0f3ef;padding:5px;border-radius:11px;margin-bottom:18px}.country-switch button{font-size:12px;padding:11px 5px;border-radius:8px;font-weight:600;min-height:44px;color:var(--muted)}.country-switch button.selected{background:white;color:var(--ink);box-shadow:0 2px 5px #182c2910}.drop-area{background:#f9faf7;border:1px dashed #a8bcb0;border-radius:12px;padding:30px 16px;text-align:center;transition:background .2s}.drop-area.dragging{background:#e6f3e9;border-color:var(--accent)}.upload-icon{height:46px;width:46px;border-radius:12px;background:#e9f0e8;margin:0 auto 16px;display:grid;place-items:center;color:var(--accent);font-size:23px}.upload-label{position:relative;display:inline-flex;align-items:center;justify-content:center;margin-top:20px;background:var(--accent);color:white;border-radius:9px;padding:13px 24px;min-height:48px;font-weight:600;font-size:13px;cursor:pointer;box-shadow:0 4px 9px #16665318}.upload-label:hover{background:#105342}.file-control{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;bottom:0;left:50%}.ai-option{display:flex;align-items:flex-start;gap:9px;font-size:11px;line-height:1.6;margin-top:18px;color:var(--muted);cursor:pointer}.ai-option input{accent-color:var(--accent);width:16px;height:16px;margin-top:1px;flex-shrink:0}.upload-foot{margin-top:18px;padding-top:15px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);text-align:center;line-height:1.7}.how-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 0;gap:30px}.how-item{display:flex;gap:14px;align-items:flex-start}.how-num{font-size:11px;font-weight:700;color:var(--accent);background:#e5ece3;border-radius:50%;width:29px;height:29px;display:grid;place-items:center;flex-shrink:0}.how-item h3{font-size:13px;font-weight:600;margin-bottom:5px}.how-item p{font-size:11px;line-height:1.7;color:var(--muted)}.section-heading{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:22px}.section-heading h2{font-size:34px;letter-spacing:-.6px;line-height:1.1}.section-heading p{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}.section-heading button{font-size:12px;font-weight:600;color:var(--accent);min-height:44px;white-space:nowrap}.examples-section{padding:48px 0}.example-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.example-card{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;text-align:left;display:flex;flex-direction:column;min-height:190px}.example-card:hover{border-color:#8aaf99;box-shadow:0 8px 22px #182c2909}.example-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.risk-chip{font-size:9px;font-weight:700;letter-spacing:.7px;color:#ac4738;background:#fff1ec;padding:5px 8px;border-radius:5px}.example-card h3{font-size:16px;font-weight:600;letter-spacing:-.3px}.example-card p{font-size:11px;color:var(--muted);line-height:1.7;margin-top:9px}.example-card .example-link{font-size:11px;font-weight:600;color:var(--accent);margin-top:auto;padding-top:20px}.sample-links{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px}.sample-links a{font-size:10px;color:var(--muted);text-decoration:underline;text-underline-offset:4px;min-height:30px;display:inline-flex;align-items:center}.price-strip{background:#e8eee4;border:1px solid #d9e3d4;border-radius:16px;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:28px 32px}.price-strip h2{font-size:25px;letter-spacing:-.5px}.price-strip p{font-size:12px;color:var(--muted);margin-top:6px}.primary-button{background:var(--ink);color:white;border-radius:9px;padding:13px 20px;font-size:12px;font-weight:600;min-height:46px;white-space:nowrap}.site-footer{margin-top:48px;border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;gap:20px;font-size:10px;line-height:1.7;color:var(--muted)}.report-content{max-width:780px;margin:0 auto;padding-top:32px}.pricing-content{padding-top:52px}.pricing-content>h1{font-size:46px;letter-spacing:-1px}.bg-blue-600{background:var(--accent)!important}.text-blue-600{color:var(--accent)!important}.border-blue-500,.border-blue-300{border-color:#85b39a!important}.ring-blue-200{--tw-ring-color:#d8e9da!important}.bg-blue-50\/50{background:#eef5ed!important}.bg-slate-900{background:var(--ink)!important}.text-slate-400{color:#74827c!important}.text-slate-500,.text-slate-600{color:var(--muted)!important}.text-slate-900{color:var(--ink)!important}.rounded-full:not(span){border-radius:9px}.pricing-content .grid>div{border-radius:15px;box-shadow:none}.pricing-content .grid>div.ring-1{box-shadow:0 8px 28px #1666530c}.pricing-content ul{line-height:1.6}.report-content textarea{line-height:1.7}.report-content .shadow-sm{box-shadow:0 3px 18px #182c2905}.report-content .rounded-3xl{border-radius:18px}.report-content .space-y-4>div{border-radius:15px}.report-content .space-y-4 p{line-height:1.8}.error-banner{margin-top:20px;padding:16px;background:#fff0ed;border:1px solid #f0c5ba;border-radius:10px;font-size:13px;color:#8f3426}.privacy-note{font-size:11px;text-align:center;color:var(--muted);line-height:1.8;max-width:660px;margin:24px auto 0}.spinner{display:block;width:24px;height:24px;border:2px solid #d8e5d9;border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.app-shell{padding:0 28px 28px}.hero-grid{gap:32px;padding:50px 0 40px}.hero-title{font-size:53px}.site-nav{gap:0}.nav-item{padding:10px}.how-grid{gap:20px}.example-card{padding:18px}}
+@media(max-width:640px){.app-shell{padding:0 20px 24px}.site-header{min-height:0;padding:20px 0 13px;display:block}.brand-name{font-size:25px}.brand-mark{width:32px;height:37px}.site-nav{margin-top:15px;justify-content:space-between;gap:2px}.nav-item{padding:8px 12px;min-height:42px;font-size:11px}.hero-grid{display:flex;flex-direction:column;gap:27px;padding:34px 0 32px;align-items:stretch}.hero-title{font-size:51px;letter-spacing:-1.5px;margin:17px 0}.hero-copy{font-size:13px;line-height:1.8;max-width:none}.hero-proof{margin-top:17px;gap:8px 17px;font-size:10px}.upload-panel{padding:20px;border-radius:16px}.drop-area{padding:24px 12px}.how-grid{grid-template-columns:1fr;padding:22px 0;gap:19px}.how-item p{font-size:12px}.example-grid{grid-template-columns:1fr}.example-card{min-height:0;padding:21px}.example-top{margin-bottom:13px}.example-card .example-link{padding-top:15px}.examples-section{padding:32px 0}.section-heading{align-items:start}.section-heading h2{font-size:30px}.section-heading button{white-space:normal;text-align:right}.sample-links{gap:7px 18px}.price-strip{padding:23px;display:block}.price-strip button{margin-top:18px;width:100%}.site-footer{margin-top:32px;display:block}.site-footer>span+span{display:block;margin-top:6px}.pricing-content{padding-top:30px}.pricing-content>h1{font-size:38px}.pricing-content>.grid{gap:18px}.pricing-content>.grid>div{padding:24px}.report-content{padding-top:24px}.report-content .p-6{padding:22px}.report-content .text-base{font-size:14px}.report-content .grid-cols-2{gap:9px}.report-content>div:first-child{flex-wrap:wrap}.report-content>div:first-child>div{font-size:10px}.report-content>div:first-child>button:last-child{padding:12px;font-size:10px}.privacy-note{font-size:10px}.site-nav>span{font-size:9px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+
 </style>
 </head>
 <body class="min-h-screen">
@@ -49,7 +56,7 @@ function Gauge(props) {
   var r = 54;
   var c = 2 * Math.PI * r;
   var pct = Math.min(100, Math.max(0, score)) / 100;
-  var offset = c * (1 - pct * 0.75);
+  var offset = c * 0.75 * (1 - pct);
   var col = score >= 70 ? '#dc2626' : score >= 40 ? '#d97706' : '#16a34a';
   return h('div', {className: 'relative w-36 h-36 mx-auto'},
     h('svg', {viewBox: '0 0 140 140', className: 'w-full h-full', style: {transform: 'rotate(-135deg)'}},
@@ -72,6 +79,7 @@ function App() {
   var _en = useState(false); var enrichLLM = _en[0]; var setEnrichLLM = _en[1];
   var _sc = useState(false); var scanning = _sc[0]; var setScanning = _sc[1];
   var _sm = useState(''); var scanMsg = _sm[0]; var setScanMsg = _sm[1];
+  const [dragging,setDragging] = useState(false);
   var _er = useState(''); var error = _er[0]; var setError = _er[1];
   var _r = useState(null); var result = _r[0]; var setResult = _r[1];
   var _u = useState(ls.unlocked || []); var unlocked = _u[0]; var setUnlocked = _u[1];
@@ -92,6 +100,8 @@ function App() {
     saveLS({credits: credits, unlocked: unlocked, email: payEmail, notes: notes, paymentRef: paymentRef});
   }, [credits, unlocked, payEmail, notes, paymentRef]);
 
+  useEffect(()=>{window.scrollTo({top:0,behavior:'instant'});},[view]);
+
   var isUnlocked = result && (result.isPaid || result.isDemo || (unlocked.indexOf(result._id) >= 0));
 
   var openDemo = useCallback(function(key) {
@@ -108,6 +118,8 @@ function App() {
   var runFile = useCallback(function(file) {
     if (!file) return;
     setError('');
+    if(file.size > (config.maxFileMb || 4)*1024*1024){setError('This file is too large. Choose a file under '+(config.maxFileMb || 4)+'MB.');return;}
+    if(!/\.(pdf|txt|png|jpg|jpeg|webp|bmp|tif|tiff)$/i.test(file.name)){setError('Choose a PDF, text file, or a clear photo of your document.');return;}
     setScanning(true);
     setScanMsg('Reading document…');
     track('upload_start', {jurisdiction: jurisdiction, name: file.name});
@@ -145,7 +157,7 @@ function App() {
         setScanning(false);
         setScanMsg('');
       });
-  }, [jurisdiction, enrichLLM]);
+  }, [jurisdiction, enrichLLM, config.maxFileMb]);
 
   function onFile(e) {
     var f = e.target.files && e.target.files[0];
@@ -251,110 +263,51 @@ function App() {
   }
 
   function nav(label, v) {
-    return h('button', {onClick: function() { setView(v); }, className: 'text-xs font-semibold text-slate-600 hover:text-slate-900'}, label);
+    return h('button', {onClick: function() { setView(v); }, 'aria-current':view === v ? 'page' : undefined, className:'nav-item'+(view === v ? ' active' : '')}, label);
   }
 
   function demoCard(key, riskLabel, title, blurb) {
-    return h('button', {
-      type: 'button',
-      onClick: function() { openDemo(key); },
-      className: 'rounded-2xl bg-white border p-4 text-left hover:border-slate-400 transition shadow-sm'
-    },
-      h('div', {className: 'text-[10px] font-bold text-red-600'}, riskLabel),
-      h('div', {className: 'mt-1 text-sm font-semibold'}, title),
-      h('div', {className: 'mt-1 text-[11px] text-slate-500'}, blurb)
-    );
+    return h('button',{type:'button',onClick:()=>openDemo(key),className:'example-card'},
+      h('div',{className:'example-top'},h('span',{className:'risk-chip'},riskLabel),h('span',{className:'text-xs text-slate-500'},key==='ukTenancy'?'UK':'SOUTH AFRICA')),
+      h('h3',null,title),h('p',null,blurb),h('span',{className:'example-link'},'Explore report →'));
   }
 
   // ——— Render ———
   var body = null;
 
   if (view === 'landing') {
-    body = h('section', {className: 'pt-6'},
-      h('h1', {className: 'serif text-4xl sm:text-5xl leading-tight text-center'}, 'See what could hurt you', h('br'), h('span', {className: 'italic text-slate-500'}, 'before you sign.')),
-      h('p', {className: 'mt-4 text-center text-slate-600 text-sm max-w-md mx-auto'},
-        'Upload a lease, job offer, or agreement. Get a risk score, SA or UK law flags, and plain-English recommendations. From ',
-        h('strong', null, 'R19'),
-        ' — free score + 3 full flags.'
-      ),
-      h('div', {className: 'mt-3 text-center text-[11px] text-slate-400'}, 'Server: ' + serverOk),
-      h('div', {className: 'mt-4 flex flex-wrap gap-2 justify-center'},
-        h('button', {
-          type: 'button',
-          onClick: function() { setJurisdiction('ZA'); },
-          className: 'px-3 py-1.5 rounded-full text-xs font-semibold border ' + (jurisdiction === 'ZA' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white')
-        }, '🇿🇦 South Africa'),
-        h('button', {
-          type: 'button',
-          onClick: function() { setJurisdiction('UK'); },
-          className: 'px-3 py-1.5 rounded-full text-xs font-semibold border ' + (jurisdiction === 'UK' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white')
-        }, '🇬🇧 United Kingdom')
-      ),
-      h('div', {className: 'mt-8 rounded-3xl border-2 border-dashed border-slate-300 bg-white p-10 text-center'},
-        scanning
-          ? h('div', null,
-              h('div', {className: 'text-sm font-semibold'}, scanMsg || 'Working…'),
-              h('div', {className: 'mt-2 text-xs text-slate-500'}, 'Please wait')
-            )
-          : h('div', null,
-              h('div', {className: 'text-sm font-semibold text-slate-800'}, 'Drop PDF, photo, or .txt'),
-              h('p', {className: 'mt-1 text-xs text-slate-500'}, 'Max ' + (config.maxFileMb || 4) + 'MB · text PDF or clear scan'),
-              h('label', {className: 'mt-5 inline-block cursor-pointer rounded-full bg-blue-600 text-white px-6 py-3 text-sm font-semibold shadow-lg'},
-                'Choose file',
-                h('input', {type: 'file', className: 'hidden', accept: '.pdf,image/*,.txt,application/pdf', onChange: onFile})
-              ),
-              h('label', {className: 'mt-4 flex items-center justify-center gap-2 text-xs text-slate-600'},
-                h('input', {type: 'checkbox', checked: enrichLLM, onChange: function(e) { setEnrichLLM(e.target.checked); }}),
-                ' AI enrichment (Groq + TinyFish research)'
-              )
-            )
-      ),
-      h('div', {className: 'mt-10 grid sm:grid-cols-3 gap-4'},
-        [
-          {p: 'R19', t: 'Full report', d: 'All flags, recommendations, exposure, PDF'},
-          {p: 'R39', t: '3-pack', d: '~R13 each · keep your payment receipt'},
-          {p: 'R99', t: '10-pack', d: '~R10 each · best value for repeat use'}
-        ].map(function(pair) {
-          return h('button', {
-            key: pair.p,
-            type: 'button',
-            onClick: function() { setView('pricing'); },
-            className: 'rounded-2xl bg-white border p-4 text-left hover:border-slate-400 transition'
-          },
-            h('div', {className: 'text-2xl font-bold'}, pair.p),
-            h('div', {className: 'text-xs font-semibold text-slate-800 mt-0.5'}, pair.t),
-            h('div', {className: 'text-[11px] text-slate-500 mt-1'}, pair.d)
-          );
-        })
-      ),
-      h('p', {className: 'mt-3 text-center'},
-        h('button', {type: 'button', onClick: function() { setView('pricing'); }, className: 'text-xs font-semibold text-blue-600 underline'}, 'See full pricing details →')
-      ),
-      h('div', {className: 'mt-12'},
-        h('h2', {className: 'text-center text-sm font-bold tracking-wide text-slate-500 uppercase'}, 'Example reports — from the live engine'),
-        h('p', {className: 'mt-2 text-center text-xs text-slate-500 max-w-md mx-auto'},
-          'Snapshots of analyseContract() on our published samples. Upload the same sample file to get the same score and flags.'
+    body = h('section',null,
+      h('div',{className:'hero-grid'},
+        h('div',null,
+          h('div',{className:'eyebrow'},'A clearer view of your contract'),
+          h('h1',{className:'hero-title serif'},'Read the risks.',h('br'),h('em',null,'Before you sign.')),
+          h('p',{className:'hero-copy'},'Understand the clauses that deserve a second look. Upload your lease, job offer, or agreement for a clear breakdown of potential risks under SA or UK rules.'),
+          h('div',{className:'hero-proof'},h('span',null,'Free score + 3 flags'),h('span',null,'Full reports from R19'),h('span',null,'No subscription'))
         ),
-        h('div', {className: 'mt-5 grid sm:grid-cols-3 gap-3'},
-          demoCard('lease', 'HIGH RISK · 85', 'SA Residential Lease', 'Entry without notice · non-refundable deposit · POPIA data sale'),
-          demoCard('employment', 'HIGH RISK · 70', 'SA Employment Offer', '55-hour week · unpaid overtime · rights waiver'),
-          demoCard('ukTenancy', 'HIGH RISK · 90', 'UK AST Tenancy', '8-week deposit · no-fault wording · data sale · liability exclusion')
-        ),
-        h('div', {className: 'mt-4 flex flex-wrap justify-center gap-3 text-[11px]'},
-          h('a', {className: 'text-blue-600 font-semibold underline', href: '/samples/sample-lease.txt', download: true}, 'Download SA lease sample'),
-          h('a', {className: 'text-blue-600 font-semibold underline', href: '/samples/sample-employment.txt', download: true}, 'Download SA employment sample'),
-          h('a', {className: 'text-blue-600 font-semibold underline', href: '/samples/sample-uk-tenancy.txt', download: true}, 'Download UK tenancy sample')
-        )
-      ),
-      h('p', {className: 'mt-8 text-center text-[11px] text-slate-400 max-w-lg mx-auto'},
-        'Not legal advice. We flag risks and cite law — we do not rewrite your contract. High-risk results include links to find a qualified attorney.'
-      )
+        h('div',{className:'upload-panel'},
+          h('div',{className:'panel-heading'},h('h2',null,'Check your document'),h('span',{className:'step-tag'},'01 / CHOOSE YOUR RULES')),
+          h('div',{className:'country-switch','aria-label':'Contract jurisdiction'},
+            ['ZA','UK'].map(j=>h('button',{key:j,type:'button',disabled:scanning,'aria-pressed':jurisdiction===j,onClick:()=>setJurisdiction(j),className:jurisdiction===j?'selected':''},j==='ZA'?'🇿🇦 South Africa':'🇬🇧 United Kingdom'))),
+          h('div',{className:'drop-area'+(dragging?' dragging':''),onDragOver:e=>{e.preventDefault();if(!scanning)setDragging(true);},onDragLeave:()=>setDragging(false),onDrop:e=>{e.preventDefault();setDragging(false);if(!scanning)runFile(e.dataTransfer.files[0]);},'aria-busy':scanning},
+            scanning ? h('div',{role:'status','aria-live':'polite'},h('span',{className:'spinner'}),h('p',{className:'text-sm font-semibold'},scanMsg||'Checking your document…'),h('p',{className:'mt-2 text-xs text-slate-500'},'Keep this page open while we read your file.')) : h(React.Fragment,null,
+              h('div',{className:'upload-icon','aria-hidden':true},'↑'),h('p',{className:'text-sm font-semibold'},'Drop your document here'),h('p',{className:'mt-2 text-xs text-slate-500'},'PDF, text, or a clear photo · up to '+(config.maxFileMb||4)+'MB'),
+              h('label',{className:'upload-label'},'Choose a file',h('input',{className:'file-control',type:'file','aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})))) ,
+          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights'),h('br'),'Optional. Document excerpts may be sent to AI providers.')),
+          h('div',{className:'upload-foot'},'Uploaded files are deleted after processing. ',h('button',{onClick:()=>setView('privacy'),className:'underline'},'How we handle your data'),serverOk==='offline'&&h('p',{role:'status',className:'text-red-700 mt-2'},'Connection unavailable. Please try again shortly.'))
+        )),
+      h('div',{className:'how-grid'},[['01','Upload your agreement','Choose SA or UK rules and add your document.'],['02','Understand the flags','See your risk score, relevant clauses, and law references.'],['03','Decide your next step','Unlock the full report or take flagged issues to a lawyer.']].map(x=>h('div',{key:x[0],className:'how-item'},h('span',{className:'how-num'},x[0]),h('div',null,h('h3',null,x[1]),h('p',null,x[2]))))),
+      h('div',{className:'examples-section'},
+        h('div',{className:'section-heading'},h('div',null,h('h2',{className:'serif'},'Know what to expect.'),h('p',null,'Explore full example reports before uploading your own.'))),
+        h('div',{className:'example-grid'},demoCard('lease','85 / 100 · HIGH RISK','Residential lease','Entry without notice, deposit forfeiture, and personal data sharing.'),demoCard('employment','70 / 100 · HIGH RISK','Employment offer','Long working hours, unpaid overtime, and rights waivers.'),demoCard('ukTenancy','90 / 100 · HIGH RISK','UK tenancy agreement','Deposit terms, termination notices, and liability exclusions.')),
+        h('div',{className:'sample-links'},h('span',{className:'text-[10px] text-slate-500 self-center'},'VERIFY THE EXAMPLES:'),[['sample-lease.txt','SA lease'],['sample-employment.txt','SA employment'],['sample-uk-tenancy.txt','UK tenancy']].map(x=>h('a',{key:x[0],href:'/samples/'+x[0],download:true},'Download '+x[1]+' ↗')))),
+      h('div',{className:'price-strip'},h('div',null,h('h2',{className:'serif'},'Clarity, without a commitment.'),h('p',null,'Start free. R19 for one report, R39 for three, or R99 for ten.')),h('button',{className:'primary-button',onClick:()=>{setView('pricing');window.scrollTo({top:0});}},'Compare plans →')),
+      h('p',{className:'privacy-note'},'Automated contract triage, not legal advice. Flags are a starting point for a conversation with a qualified lawyer; they do not replace professional advice.')
     );
   }
 
   if (view === 'result' && result) {
     var issues = result.issues || [];
-    body = h('section', {className: 'pt-2'},
+    body = h('section', {className: 'report-content'},
       h('div', {className: 'flex items-center justify-between gap-2'},
         h('button', {
           onClick: function() { setView('landing'); setResult(null); },
@@ -381,7 +334,7 @@ function App() {
             h('div', {className: 'text-xl font-bold'}, result.issuesCount)
           ),
           h('div', {className: 'rounded-2xl bg-amber-50 border border-amber-100 p-4'},
-            h('div', {className: 'text-[10px] font-bold text-amber-800'}, 'EXPOSURE'),
+            h('div', {className: 'text-[10px] font-bold text-amber-800'}, 'INDICATIVE EXPOSURE'),
             h('div', {className: 'text-base font-bold text-amber-900'}, isUnlocked ? result.exposure : '••••')
           )
         ),
@@ -395,7 +348,7 @@ function App() {
         h('div', {className: 'mt-3'},
           h('input', {
             className: 'rounded-full border px-3 py-1.5 text-xs w-56',
-            placeholder: 'Email for credits',
+            type:'email', autoComplete:'email', 'aria-label':'Receipt email', placeholder: 'Email for credits',
             value: payEmail,
             onChange: function(e) { setPayEmail(e.target.value); }
           })
@@ -452,7 +405,7 @@ function App() {
         h('div', {className: 'text-xs font-bold text-slate-500'}, 'PRIVATE NOTES (saved on this device only)'),
         h('textarea', {
           className: 'mt-2 w-full rounded-xl border p-3 text-sm min-h-[80px]',
-          placeholder: 'Your private annotations…',
+          'aria-label': 'Private notes for this report', placeholder: 'Questions to ask, clauses to discuss…',
           value: notes[result._id] || '',
           onChange: function(e) {
             var v = e.target.value;
@@ -493,7 +446,7 @@ function App() {
           [false, 'Full recommendations on every issue'],
           [false, 'Financial exposure estimate'],
           [false, 'PDF export'],
-          [false, 'Optional AI enrichment unlocked in report']
+          [true, 'Optional AI insights on upload']
         ]
       },
       {
@@ -549,7 +502,7 @@ function App() {
         ]
       }
     ];
-    body = h('section', {className: 'pt-8 max-w-4xl mx-auto'},
+    body = h('section', {className: 'pricing-content'},
       h('h1', {className: 'serif text-3xl sm:text-4xl text-center'}, 'Simple, honest pricing'),
       h('p', {className: 'text-center text-sm text-slate-600 mt-2 max-w-xl mx-auto'},
         'Check & Flag Only — not legal advice. Pay only when you need the full report. No monthly subscription required.'
@@ -638,16 +591,15 @@ function App() {
     );
   }
 
-  return h('div', {className: (view === 'pricing' ? 'max-w-5xl' : 'max-w-3xl') + ' mx-auto px-4 pb-24'},
-    h('header', {className: 'flex items-center justify-between py-5'},
+  return h('div', {className:'app-shell'},
+    h('header', {className:'site-header'},
       h('button', {
         onClick: function() { setView('landing'); setResult(null); },
-        className: 'text-left'
+        className:'brand', 'aria-label':'ContractCheck home'
       },
-        h('div', {className: 'serif text-2xl font-normal'}, 'ContractCheck'),
-        h('div', {className: 'text-[10px] font-semibold tracking-widest text-slate-500 uppercase'}, 'Check & Flag Only')
+        h('span',{className:'brand-mark','aria-hidden':true},'✓'),h('div',null,h('div',{className:'brand-name serif'},'ContractCheck'),h('div',{className:'brand-sub'},'Know what you sign'))
       ),
-      h('div', {className: 'flex items-center gap-3'},
+      h('nav', {className:'site-nav','aria-label':'Main navigation'},
         nav('Pricing', 'pricing'),
         nav('Privacy', 'privacy'),
         nav('Terms', 'terms'),
@@ -655,10 +607,9 @@ function App() {
         credits > 0 && h('span', {className: 'text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full'}, credits + ' credits')
       )
     ),
-    error && h('div', {className: 'mb-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm p-3'}, error),
-    body,
-    h('footer', {className: 'mt-16 pt-8 border-t text-center text-[11px] text-slate-400'},
-      'ContractCheck v3 · Not legal advice · © ' + new Date().getFullYear()
+    error && h('div', {className:'error-banner',role:'alert'}, error),
+    h('main',{id:'main-content'},body),
+    h('footer', {className:'site-footer'},h('span',null,'ContractCheck · South Africa & United Kingdom'),h('span',null,'Check & flag only. Not legal advice. © '+new Date().getFullYear())
     )
   );
 }
