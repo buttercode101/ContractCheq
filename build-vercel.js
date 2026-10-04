@@ -1,0 +1,13 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const out = path.join(__dirname, '.vercel/output');
+fs.rmSync(out, { recursive: true, force: true });
+const fn = path.join(out, 'functions/api/index.func');
+fs.mkdirSync(fn, { recursive: true });
+for (const name of ['server', 'node_modules', 'public']) fs.cpSync(path.join(__dirname, name), path.join(fn, name), { recursive: true });
+fs.copyFileSync(path.join(__dirname, 'package.json'), path.join(fn, 'package.json'));
+fs.writeFileSync(path.join(fn, 'index.js'), "module.exports = require('./server/index');\n");
+fs.writeFileSync(path.join(fn, '.vc-config.json'), JSON.stringify({runtime:'nodejs24.x',handler:'index.js',launcherType:'Nodejs',maxDuration:60,regions:['cpt1']}));
+fs.cpSync(path.join(__dirname, 'public'), path.join(out, 'static'), {recursive:true});
+fs.writeFileSync(path.join(out, 'config.json'), JSON.stringify({version:3,routes:[{src:'/api/.*',dest:'/api/index'},{handle:'filesystem'},{src:'/.*',dest:'/index.html'}]}));
+console.log('Packaged application with PDF and OCR runtime assets.');

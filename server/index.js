@@ -339,7 +339,7 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
       warning: extracted.warning || null,
       chars: extracted.text.length,
     };
-    analysis._id = `scan-${Date.now()}-${uuidv4().slice(0, 8)}`;
+    analysis._id = `scan-${Date.now()}-${uuidv4()}`;
     analysis.isPaid = false;
 
     if (req.body?.enrich === '1' || req.query.enrich === '1') {
@@ -370,7 +370,7 @@ app.post('/api/analyze-text', uploadLimiter, async (req, res, next) => {
   if (typeof text !== 'string' || text.length < 30 || text.length > 200000) return res.status(400).json({ error: 'Text too short' });
 
   const analysis = analyseContract(text, name, jurisdiction);
-  analysis._id = `local-${Date.now()}-${uuidv4().slice(0, 6)}`;
+  analysis._id = `local-${Date.now()}-${uuidv4()}`;
   analysis.extraction = { method: 'client-text', pages: 1, confidence: 1 };
   analysis.isPaid = false;
   await store.saveAnalysis(analysis._id, analysis);
