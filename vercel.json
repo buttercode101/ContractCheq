@@ -1,0 +1,18 @@
+{
+  "framework": "express",
+  "regions": [
+    "cpt1"
+  ],
+  "functions": {
+    "index.js": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/{tesseract.js-core,tesseract.js,@tesseract.js-data/eng,pdf-parse,pdfjs-dist}/**"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cleanup",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

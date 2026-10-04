@@ -1,28 +1,28 @@
 {
-  "name": "contractcheck-v1",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "contractcheck-sa",
+  "version": "3.0.0",
+  "description": "ContractCheck SA \u2014 cheapest SA/UK AI contract risk triage. Check & Flag Only.",
+  "main": "server/index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "test:smoke": "node server/smoke.js",
+    "test": "node --test server/deployment.test.js"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "dependencies": {
-    "@google/genai": "^1.40.0",
-    "clsx": "^2.1.1",
-    "idb-keyval": "^6.2.2",
-    "lucide-react": "^0.577.0",
-    "motion": "^12.35.2",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "tailwind-merge": "^3.5.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@vercel/blob": "^2.8.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^7.2.0",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5",
+    "tesseract.js": "^5.1.1",
+    "uuid": "^11.1.1"
   }
 }
