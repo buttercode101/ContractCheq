@@ -39,7 +39,7 @@ const RULES = [
     analysis:
       'The Consumer Protection Act prohibits excessively one-sided terms. Forfeiture despite landlord fault is unfair under CPA s48/s51. RHA requires the deposit in an interest-bearing account.',
     rec: 'Ensure deposit is refundable subject only to reasonable proven damages. Request proof of interest-bearing account.',
-    impact: 'Risk of losing full deposit even when not at fault. Exposure up to ~2× monthly rental.',
+    impact: 'Risk of losing some or all of the deposit even when not at fault; the amount depends on the contract, rent and proven deductions.',
   },
   {
     id: 'popia',
