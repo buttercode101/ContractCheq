@@ -74,8 +74,8 @@ const RULES = [
     ],
     fb: 'Excessive weekly hours and/or unpaid overtime / meal-interval waiver.',
     analysis:
-      'BCEA limits ordinary hours to 45 per week. Overtime is limited and must be paid at 1.5×. Waiver of meal intervals after 5 hours and a blanket 55-hour week without compensation contravenes s9, s10 and s14; application and exceptions depend on the worker and agreement.',
-    rec: 'Cap ordinary hours at 45. Provide a separate written overtime agreement with premium pay. Guarantee a 60-minute meal interval after 5 continuous hours.',
+      'For employees to whom these working-time provisions apply, the BCEA generally limits ordinary hours to 45 per week, requires overtime agreement and provides a 1.5× overtime-pay baseline while allowing specified paid-time-off arrangements. Meal-interval rules also allow limited written variations. A blanket 55-hour ordinary week, unpaid overtime or broad meal-break waiver deserves review.',
+    rec: 'Check whether the BCEA working-time provisions apply to this employee. If they do, align ordinary hours, overtime agreement/compensation and meal intervals with sections 9, 10 and 14, including any lawful written variations.',
     impact: 'Unpaid labour claim and CCMA dispute; employer may be liable for arrears.',
   },
   {
