@@ -23,6 +23,8 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
   assert.equal((await post('/api/analyze-text',{text:'   ',jurisdiction:'ZA'})).status,400);
   assert.equal((await post('/api/analyze-text',{text:'ordinary contract wording',jurisdiction:'XX'})).status,400);
+  const ui=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+  assert.ok(ui.includes("'/100 · '+d.level"),'Demo cards must derive their risk label from demo data');
   const broken = new FormData();
   broken.append('file', new Blob([Buffer.from('%PDF-1.4\nthis is deliberately corrupt')], {type:'application/pdf'}), 'broken.pdf');
   broken.append('jurisdiction','ZA');
