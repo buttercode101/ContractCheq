@@ -1,0 +1,176 @@
+[
+  {
+    "id": "za-lease-entry",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. RESIDENTIAL LEASE.\nLandlord may enter the premises without notice. Monthly rent R7000.\n",
+    "jurisdiction": "ZA",
+    "expected": [
+      "rha-entry"
+    ]
+  },
+  {
+    "id": "za-lease-deposit",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. RESIDENTIAL LEASE. The deposit is non-refundable. Rent R8000.",
+    "jurisdiction": "ZA",
+    "expected": [
+      "rha-dep"
+    ]
+  },
+  {
+    "id": "za-lease-protected",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. RESIDENTIAL LEASE.\nLandlord may not enter the premises without notice. The deposit is refundable with\ninterest. The parties agree to reasonable advance notice.\n",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-employment-40",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. EMPLOYMENT AGREEMENT. The employee will work 40 hours per week. Overtime requires agreement and payment at 1.5 times the normal rate. Meal breaks are provided.",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-employment-45",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. EMPLOYMENT\nAGREEMENT. The employee will work 45 hours per week. The employer provides paid\novertime by agreement and meal breaks.\n",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-employment-55",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. EMPLOYMENT AGREEMENT. The employee will work 55 hours per week. Overtime is unpaid.",
+    "jurisdiction": "ZA",
+    "expected": [
+      "bcea"
+    ]
+  },
+  {
+    "id": "za-dismissal",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. EMPLOYMENT\nAGREEMENT. The employer may terminate at will without notice. Summary dismissal\nwithout hearing is permitted.\n",
+    "jurisdiction": "ZA",
+    "expected": [
+      "lra"
+    ]
+  },
+  {
+    "id": "za-domestic",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. DOMESTIC WORKER EMPLOYMENT AGREEMENT. Working 35 hours per week with annual leave and paid overtime. The worker works at the employer premises.",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-nda",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. MUTUAL NON-\nDISCLOSURE AGREEMENT. Confidential information is protected for three years. Public\ninformation and legally required disclosures are excluded.\n",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-restraint",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. EMPLOYMENT AGREEMENT. A non-compete applies for 5 years and restraint of trade applies worldwide.",
+    "jurisdiction": "ZA",
+    "expected": [
+      "nda-overbroad"
+    ]
+  },
+  {
+    "id": "za-services",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. SERVICES\nAGREEMENT. Supplier will provide software support for R3000 per month. Amendments\nrequire mutual written agreement. Cancellation requires 30 days notice.\n",
+    "jurisdiction": "ZA",
+    "expected": []
+  },
+  {
+    "id": "za-sale-waiver",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. SALE AGREEMENT. Buyer waives all rights and claims. Seller has no liability whatsoever. Goods price R12000.",
+    "jurisdiction": "ZA",
+    "expected": [
+      "cpa-unfair"
+    ]
+  },
+  {
+    "id": "za-loan",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. CREDIT AGREEMENT.\nThis credit agreement is offered without affordability assessment. Penalty interest\napplies.\n",
+    "jurisdiction": "ZA",
+    "expected": [
+      "nca"
+    ]
+  },
+  {
+    "id": "za-privacy",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. DATA PROCESSING AGREEMENT. You consent to sell personal data to marketing partners.",
+    "jurisdiction": "ZA",
+    "expected": [
+      "popia"
+    ]
+  },
+  {
+    "id": "za-unilateral",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. SERVICES\nAGREEMENT. Terms may be amended at any time without notice at the sole discretion of\nthe company.\n",
+    "jurisdiction": "ZA",
+    "expected": [
+      "onesided"
+    ]
+  },
+  {
+    "id": "uk-deposit",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. ENGLAND TENANCY AGREEMENT. The security deposit is eight weeks rent and is non-refundable. Annual rent is 18000 pounds.",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-deposit-cap"
+    ]
+  },
+  {
+    "id": "uk-eviction",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. ENGLAND TENANCY\nAGREEMENT. The landlord may use Section 21 immediately and evict without grounds.\n",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-s21-trap"
+    ]
+  },
+  {
+    "id": "uk-working",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. EMPLOYMENT AGREEMENT. Employee must work 60 hours per week with no rest breaks.",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-wtr"
+    ]
+  },
+  {
+    "id": "uk-service-waiver",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. CONSUMER SERVICES\nAGREEMENT. Supplier excludes liability for death or personal injury caused by\nnegligence.\n",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-unfair"
+    ]
+  },
+  {
+    "id": "uk-protective",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. CONSUMER SERVICES AGREEMENT. Nothing in this agreement excludes liability for death or personal injury caused by negligence. Statutory rights are preserved.",
+    "jurisdiction": "UK",
+    "expected": []
+  },
+  {
+    "id": "uk-data-sale",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. DATA PROCESSING\nAGREEMENT. Customer gives consent to sell personal data for marketing to third\nparties.\n",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-gdpr"
+    ]
+  },
+  {
+    "id": "uk-data-protected",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. DATA PROCESSING AGREEMENT. Selling personal data is prohibited. Personal data will never be sold. Processing is limited to delivering the service.",
+    "jurisdiction": "UK",
+    "expected": []
+  },
+  {
+    "id": "uk-safe-first-risk-later",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October\n2026. This document is for software testing only, not for signing. CONSUMER SERVICES\nAGREEMENT. Nothing excludes liability for personal injury. Clause 7: Supplier\nexcludes liability for death or personal injury caused by negligence.\n",
+    "jurisdiction": "UK",
+    "expected": [
+      "uk-unfair"
+    ]
+  },
+  {
+    "id": "uk-normal-employment",
+    "text": "SYNTHETIC QA CONTRACT. Parties: Example Alpha and Example Beta. Effective 5 October 2026. This document is for software testing only, not for signing. EMPLOYMENT AGREEMENT. Employee works 37 hours per week. Rest breaks, paid leave and fair disciplinary procedure apply.",
+    "jurisdiction": "UK",
+    "expected": []
+  }
+]

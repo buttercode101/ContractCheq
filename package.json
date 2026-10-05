@@ -1,13 +1,13 @@
 {
   "name": "contractcheck-sa",
   "version": "3.0.0",
-  "description": "ContractCheck SA — cheapest SA/UK AI contract risk triage. Check & Flag Only.",
+  "description": "ContractCheck SA \u2014 cheapest SA/UK AI contract risk triage. Check & Flag Only.",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
     "test:smoke": "node server/smoke.js",
-    "test": "node --test server/deployment.test.js"
+    "test": "node --test server/*.test.js"
   },
   "engines": {
     "node": "24.x"
@@ -24,6 +24,7 @@
     "multer": "^2.4.0",
     "pdf-parse": "^2.4.5",
     "tesseract.js": "^5.1.1",
+    "utif": "^3.1.0",
     "uuid": "^11.1.1"
   }
 }

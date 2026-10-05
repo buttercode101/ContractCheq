@@ -37,8 +37,8 @@ const upload = multer({
   dest: uploadDir,
   limits: { fileSize: MAX_FILE_MB * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const ok = /pdf|image|png|jpe?g|webp|txt|plain/i.test(file.mimetype) ||
-      /\.(pdf|png|jpe?g|webp|txt)$/i.test(file.originalname || '');
+    const ok = /pdf|image|png|jpe?g|webp|bmp|tiff?|txt|plain/i.test(file.mimetype) ||
+      /\.(pdf|png|jpe?g|webp|bmp|tiff?|txt)$/i.test(file.originalname || '');
     const err=ok?null:Object.assign(new Error('Only PDF, images, or .txt allowed'),{status:400});
     cb(err, ok);
   },
@@ -63,13 +63,32 @@ async function extractFromPdf(filePath) {
   const parser = new PDFParse({data:fs.readFileSync(filePath)});
   try {
     const data = await parser.getText();
-    const text = (data.text || '').trim();
-    return { text, pages:data.total||1, method:'pdf-parse', confidence:text.length>80?0.9:0.4,
-      warning:text.length<40?'Little text found. For a scanned PDF, upload a clear photo for OCR.':null };
+    const pages = data.total || 1;
+    const extractedPages = data.pages || [];
+    const scanned = extractedPages.filter(p => (p.text || '').replace(/\s/g,'').length < 30).map(p => p.num);
+    // OCR every image-only page, including mixed PDFs; never silently ignore later pages.
+    if (scanned.length > 3) throw Object.assign(new Error('This PDF has more than 3 scanned pages. Split it into files of up to 3 pages.'), {status:422});
+    let confidence = 0.9;
+    if (scanned.length) {
+      const screenshots = await parser.getScreenshot({partial:scanned,desiredWidth:1600,imageDataUrl:false});
+      for (const image of screenshots.pages) {
+        const result = await extractFromImage(Buffer.from(image.data),12000);
+        const target = extractedPages.find(p => p.num === image.pageNumber);
+        if (target) target.text = result.text;
+        confidence = Math.min(confidence, result.confidence);
+        if (result.text.length < 30) throw Object.assign(new Error('A scanned page could not be read. Upload a sharper scan or photo.'),{status:422});
+      }
+    }
+    const text = extractedPages.length ? extractedPages.map(p => p.text).join('\n\n').trim() : (data.text||'').trim();
+    return {text,pages,method:scanned.length?'pdf-ocr':'pdf-parse',confidence,
+      warning:confidence<0.75?'Some text may be unclear. Verify the extracted clauses against your original document.':null};
+  } catch (error) {
+    if (error.status) throw error;
+    throw Object.assign(new Error('This PDF could not be read. It may be damaged or password-protected. Upload an unlocked PDF or a clear photo.'), {status:422});
   } finally {await parser.destroy();}
 }
 
-async function extractFromImage(filePath) {
+async function extractFromImage(filePath, timeoutMs = 35000) {
   const Tesseract=require('tesseract.js');
   let worker, timer;
   const work=(async()=> {
@@ -79,14 +98,37 @@ async function extractFromImage(filePath) {
       workerPath:require.resolve('tesseract.js/src/worker-script/node/index.js'),
       logger:()=>{}
     });
-    const result=await worker.recognize(filePath);
+    const graphics=require('@napi-rs/canvas');
+    let input=filePath;
+    try {let image;
+      const bytes=Buffer.isBuffer(filePath)?filePath:fs.readFileSync(filePath);
+      if(bytes.subarray(0,4).equals(Buffer.from([0x49,0x49,0x2a,0]))||bytes.subarray(0,4).equals(Buffer.from([0x4d,0x4d,0,0x2a]))){
+        const UTIF=require('utif'),pages=UTIF.decode(bytes);
+        if(pages.length!==1) throw Object.assign(new Error('Upload a single-page TIFF or convert multiple pages to PDF.'),{status:422});
+        const page=pages[0];if(!page.t256?.[0]||!page.t257?.[0]||page.t256[0]*page.t257[0]>25000000) throw Object.assign(new Error('Image is too large or invalid. Resize it below 25 megapixels.'),{status:422});
+        UTIF.decodeImage(bytes,page);const rgba=UTIF.toRGBA8(page);
+        image=graphics.createCanvas(page.width,page.height);image.getContext('2d').putImageData(new graphics.ImageData(new Uint8ClampedArray(rgba),page.width,page.height),0,0);
+      }else image=await graphics.loadImage(bytes);
+      if(image.width*image.height>25000000) throw Object.assign(new Error('Image is too large. Resize it below 25 megapixels.'),{status:422});
+      const canvas=graphics.createCanvas(image.width,image.height);const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,image.width,image.height);ctx.drawImage(image,0,0);input=canvas.toBuffer('image/png');
+    } catch(error) {if(error.status) throw error;throw Object.assign(new Error('This image could not be read. Try a clear PNG, JPG or WebP photo.'),{status:422});}
+    const result=await worker.recognize(input);
     const text=(result.data?.text||'').trim();
     return {text,pages:1,method:'tesseract',confidence:(result.data?.confidence||0)/100,
       warning:text.length<30?'OCR returned little text. Try a sharper photo.':null};
   })();
   try {
-    return await Promise.race([work,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Image recognition timed out. Try a smaller, sharper photo.')),45000);})]);
+    return await Promise.race([work,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Image recognition timed out. Try a smaller, sharper photo.')),timeoutMs);})]);
   } finally {clearTimeout(timer);if(worker) await worker.terminate();}
+}
+
+function decodeText(buffer) {
+  if (buffer[0]===0xff && buffer[1]===0xfe) return buffer.subarray(2).toString('utf16le');
+  if (buffer[0]===0xfe && buffer[1]===0xff) {
+    const copy=Buffer.from(buffer.subarray(2));if(copy.length%2) throw Object.assign(new Error('Invalid UTF-16 text file.'),{status:422});
+    return copy.swap16().toString('utf16le');
+  }
+  return buffer.toString('utf8').replace(/^\uFEFF/,'');
 }
 
 async function extractText(file) {
@@ -95,7 +137,7 @@ async function extractText(file) {
   if (mime.includes('pdf') || name.endsWith('.pdf')) return extractFromPdf(file.path);
   if (mime.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(name)) return extractFromImage(file.path);
   if (mime.includes('text') || name.endsWith('.txt')) {
-    return { text: fs.readFileSync(file.path, 'utf8'), pages: 1, method: 'plain-text', confidence: 1 };
+    return { text: decodeText(fs.readFileSync(file.path)), pages: 1, method: 'plain-text', confidence: 1 };
   }
   // try pdf then image
   try { return await extractFromPdf(file.path); } catch (_) {}
@@ -226,7 +268,9 @@ Max 3 extra issues. Only clear legal risks.`;
 function freeViewOf(analysis) {
   return {
     ...analysis,
-    issues: analysis.issues.slice(0, 3).map((i) => ({ ...i })),
+    issues: analysis.issues.slice(0, 3).map(({recommendation,impact,...preview}) => preview),
+    exposure: undefined,
+    highlightedClauses: undefined,
     issuesLocked: analysis.issues.slice(3).map((i) => ({
       id: i.id,
       severity: i.severity,
@@ -331,6 +375,7 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
     }
 
     const jurisdiction = String(req.body?.jurisdiction || req.query.jurisdiction || 'ZA').toUpperCase();
+    if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
     let analysis = analyseContract(extracted.text, file.originalname || 'document', jurisdiction);
     analysis.extraction = {
       method: extracted.method,
@@ -358,7 +403,7 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
   } catch (err) {
     cleanup(file?.path);
     console.error('analyze', err);
-    res.status(500).json({ error: err.message || 'Analysis failed' });
+    res.status(err.status || 422).json({ error: err.status ? err.message : 'This file could not be read. Try an unlocked PDF, plain text file or a clear photo.' });
   }
 });
 
@@ -367,6 +412,7 @@ app.post('/api/analyze-text', uploadLimiter, async (req, res, next) => {
   const text = req.body?.text || '';
   const name = req.body?.fileName || 'document';
   const jurisdiction = String(req.body?.jurisdiction || 'ZA').toUpperCase();
+  if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
   if (typeof text !== 'string' || text.length < 30 || text.length > 200000) return res.status(400).json({ error: 'Text too short' });
 
   const analysis = analyseContract(text, name, jurisdiction);
@@ -408,7 +454,7 @@ app.get('*', (req, res, next) => {
 
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError) {
-    return res.status(400).json({
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
       error: err.code === 'LIMIT_FILE_SIZE' ? `File too large (max ${MAX_FILE_MB}MB)` : err.message,
     });
   }

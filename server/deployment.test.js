@@ -18,6 +18,8 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   const input={text:'The landlord may enter the premises at any time without notice. The deposit is non-refundable.',jurisdiction:'ZA'};
   const a=await post('/api/analyze-text',input);const b=await post('/api/analyze-text',input);
   assert.equal(a.status,200);assert.equal(a.body.isPaid,false);assert.ok(a.body.issuesCount>0);
+  assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
+  assert.ok(a.body.issues.every(x=>x.recommendation===undefined&&x.impact===undefined));
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
   assert.equal((await post('/api/unlock-analysis',{analysisId:a.body._id,grantId:'credit',email:'buyer@example.test'})).status,402);
   store.durable=()=>true; // Allow the test Paystack verifier while retaining a temporary local ledger.
@@ -29,7 +31,7 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,1);
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,1);
   const unlock={analysisId:a.body._id,reference:receipt.reference,email:receipt.email};
-  const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);
+  const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);assert.ok(full.body.issues[0].recommendation);
   assert.equal((await post('/api/unlock-analysis',unlock)).status,200);
   assert.equal((await post('/api/unlock-analysis',{...unlock,analysisId:b.body._id})).status,402);
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);

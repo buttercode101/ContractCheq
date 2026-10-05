@@ -2,7 +2,7 @@
  * ContractCheck risk engine v3 — ZA + UK
  * Check & Flag Only. Not legal advice.
  */
-const RULES_VERSION = '3.0-sa-2026';
+const RULES_VERSION = '3.1-sa-2026';
 
 const RULES = [
   {
@@ -66,7 +66,7 @@ const RULES = [
     score: 82,
     tags: ['BCEA', 'LRA'],
     patterns: [
-      /(work|working)\s+(\d{2}|fifty|fifty[- ]five|60|sixty)\s+hours?\s+(per\s+)?(week)/i,
+      /(work|working)\s+(4[6-9]|[5-9]\d|\d{3}|fifty|fifty[- ]five|sixty)\s+hours?\s+(per\s+)?(week)/i,
       /overtime.{0,50}(without\s+(additional\s+)?(pay|compensation)|unpaid|no\s+extra)/i,
       /waive(s|r)?.{0,35}(meal\s+(interval|break)|right\s+to\s+meal)/i,
       /ordinary\s+hours?.{0,25}(exceed|more\s+than)\s*45/i,
@@ -74,7 +74,7 @@ const RULES = [
     ],
     fb: 'Excessive weekly hours and/or unpaid overtime / meal-interval waiver.',
     analysis:
-      'BCEA limits ordinary hours to 45 per week. Overtime is limited and must be paid at 1.5×. Waiver of meal intervals after 5 hours and a blanket 55-hour week without compensation contravenes s9, s10 and s14; such waivers are void under s2.',
+      'BCEA limits ordinary hours to 45 per week. Overtime is limited and must be paid at 1.5×. Waiver of meal intervals after 5 hours and a blanket 55-hour week without compensation contravenes s9, s10 and s14; application and exceptions depend on the worker and agreement.',
     rec: 'Cap ordinary hours at 45. Provide a separate written overtime agreement with premium pay. Guarantee a 60-minute meal interval after 5 continuous hours.',
     impact: 'Unpaid labour claim and CCMA dispute; employer may be liable for arrears.',
   },
@@ -186,11 +186,11 @@ const UK_RULES = [
     fb: 'Deposit above legal cap or non-refundable.',
     analysis: 'In England, the Tenant Fees Act 2019 caps tenancy deposits (typically 5 weeks\' rent where annual rent is under £50,000). Non-refundable deposits are generally not a lawful substitute for a protected deposit.',
     rec: 'Cap the deposit at the legal maximum and protect it in an authorised scheme with prescribed information within 30 days.',
-    impact: 'Deposit protection claim; possible penalties; s21 notice risks.',
+    impact: 'Deposit protection claim; possible statutory penalties.',
   },
   {
     id: 'uk-s21-trap',
-    laws: ['Housing Act 1988 s21', 'Deregulation Act 2015'],
+    laws: ['Renters’ Rights Act 2025', 'Housing Act 1988'],
     severity: 'MEDIUM RISK',
     score: 70,
     tags: ['UK', 'Tenancy'],
@@ -200,8 +200,8 @@ const UK_RULES = [
       /section\s*21.{0,40}(any\s+time|immediately)/i,
     ],
     fb: 'No-fault eviction language without compliance context.',
-    analysis: 'Section 21 possession has strict prerequisites (deposit protection, prescribed information, licensing, gas safety, EPC). Bare “evict without reason” wording overstates landlord rights.',
-    rec: 'Use lawful notice wording and confirm all statutory prerequisites before any notice is served.',
+    analysis: 'For England’s private assured tenancies, Section 21 no-fault eviction was abolished from 1 May 2026 under the Renters’ Rights Act 2025. Possession generally requires a statutory ground and the applicable notice and court process. Historical agreements and transitional cases need individual review.',
+    rec: 'Check the current possession grounds, notice periods and court process with a qualified adviser. Do not rely on a new Section 21 notice for an England private assured tenancy.',
     impact: 'Invalid notice; delayed possession; costs.',
   },
   {
@@ -272,14 +272,29 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
 
   const isUK = String(jurisdiction || 'ZA').toUpperCase() === 'UK';
   const pack = isUK ? UK_RULES : RULES;
-  const packVersion = isUK ? '1.0-uk-2026' : RULES_VERSION;
+  const packVersion = isUK ? '1.1-uk-2026' : RULES_VERSION;
+  const employment = /employment|employee|employer|salary|remuneration/i.test(text);
+  const tenancy = /lease|tenancy|landlord|tenant/i.test(text);
   const found = [];
   const seen = new Set();
 
   for (const rule of pack) {
     if (seen.has(rule.id)) continue;
+    if (['bcea','lra','uk-wtr'].includes(rule.id) && !employment) continue;
+    if (['rha-entry','rha-dep','uk-deposit-cap','uk-s21-trap'].includes(rule.id) && !tenancy) continue;
+    if (['cpa-unfair','onesided'].includes(rule.id) && employment) continue;
     for (const pattern of rule.patterns) {
-      const match = text.match(pattern);
+      // Examine every occurrence: a protective first clause must not mask a later waiver.
+      const matches = text.matchAll(new RegExp(pattern.source, 'gi'));
+      let match;
+      for (const candidate of matches) {
+        const before = text.slice(Math.max(0, candidate.index - 110), candidate.index);
+        const prefix = before.split(/[.!?;\n]/).pop();
+        const clause = (prefix + candidate[0] + text.slice(candidate.index + candidate[0].length, candidate.index + candidate[0].length + 65)).split(/[.!?;\n]/)[0];
+        const protectedPrefix = /\b(nothing|never|not|must not|may not|shall not|does not|do not|cannot|can not|no provision)\b/i.test(prefix);
+        const prohibited = /\b(prohibited|forbidden|not permitted|never be sold|will not be sold)\b/i.test(clause);
+        if (!protectedPrefix && !prohibited) { match = candidate; break; }
+      }
       if (match) {
         seen.add(rule.id);
         const startIdx = Math.max(0, match.index - 40);
@@ -306,7 +321,7 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   }
 
   let docType = 'Contract';
-  if (/lease|tenancy|rental|landlord|tenant|premises|shorthold/i.test(text) || /lease|tenancy/i.test(fileName))
+  if (/lease|tenancy|rental|landlord|tenant|shorthold/i.test(text) || /lease|tenancy/i.test(fileName))
     docType = 'Lease / Tenancy';
   else if (/employment|employee|employer|job\s+offer|remuneration|salary/i.test(text) || /employ/i.test(fileName))
     docType = 'Employment';
@@ -323,10 +338,10 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   if (score >= 70) level = 'High Risk';
   else if (score >= 40) level = 'Medium Risk';
 
-  let exposure = isUK ? '£500 – £3,000' : 'R2,000 – R15,000';
-  if (score >= 80) exposure = isUK ? '£10,000 – £50,000' : 'R50,000 – R250,000';
-  else if (score >= 60) exposure = isUK ? '£3,000 – £15,000' : 'R15,000 – R80,000';
-  else if (score >= 40) exposure = isUK ? '£1,000 – £6,000' : 'R5,000 – R30,000';
+  const exposure = 'Not estimated';
+  const coverageWarning = isUK
+    ? 'Limited rule-based triage. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.'
+    : 'Limited rule-based triage, not a complete legal review. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.';
 
   return {
     score,
@@ -336,6 +351,7 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     docTitle: fileName ? fileName.replace(/\.[^.]+$/, '') : `${docType} Agreement`,
     docType: `${docType} • analysed just now`,
     issues: found,
+    coverageWarning,
     highlightedClauses: found.map((f) => f.excerpt.slice(0, 60)),
     rulesVersion: packVersion,
     jurisdiction: isUK ? 'UK' : 'ZA',
