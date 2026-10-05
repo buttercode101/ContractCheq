@@ -299,7 +299,7 @@ function App() {
     return h('button',{type:'button',onClick:()=>openDemo(key),className:'example-card','aria-label':'Explore '+title+' example report'},
       h('div',{className:'example-top'},h('span',{className:'example-icon'},h(Icon,{name:key==='employment'?'briefcase':'document',size:22})),h('span',{className:'example-region'},d.jurisdiction==='UK'?'UK':'South Africa')),
       h('h3',null,title),h('p',null,blurb),
-      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,d.score),h('span',null,'/100 · High risk')),h(Icon,{name:'arrow'})),
+      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,d.score),h('span',null,'/100 · '+d.level)),h(Icon,{name:'arrow'})),
       h('span',{className:'example-link'},'Explore report'));
   }
   let body;
