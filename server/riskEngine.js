@@ -7,7 +7,7 @@ const RULES_VERSION = '3.1-sa-2026';
 const RULES = [
   {
     id: 'rha-entry',
-    laws: ['Rental Housing Act s4(3)', 'Constitution s14'],
+    laws: ['Rental Housing Regulations reg 9', 'Constitution s14'],
     severity: 'HIGH THREAT',
     score: 90,
     tags: ['RHA', 'Constitution'],
@@ -19,8 +19,8 @@ const RULES = [
     ],
     fb: 'Landlord may enter premises without reasonable notice.',
     analysis:
-      'Section 14 of the Constitution and the Rental Housing Act protect tenant privacy and quiet enjoyment. Unrestricted entry without notice is an unfair practice. The RHA requires reasonable notice and entry at reasonable times.',
-    rec: 'Require at least 24 hours written notice for non-emergency entry. Limit inspections to agreed times.',
+      'Section 14 of the Constitution protects privacy, and Rental Housing unfair-practice regulations require reasonable notice and entry at a reasonable time for permitted landlord access.',
+    rec: 'Require reasonable prior notice for non-emergency entry and limit access to permitted purposes at reasonable times.',
     impact: 'Claim for invasion of privacy; possible reduction of rental for impaired use and enjoyment.',
   },
   {
