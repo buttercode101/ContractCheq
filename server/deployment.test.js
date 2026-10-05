@@ -21,6 +21,8 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
   assert.ok(a.body.issues.every(x=>x.recommendation===undefined&&x.impact===undefined));
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
+  assert.equal((await post('/api/analyze-text',{text:'   ',jurisdiction:'ZA'})).status,400);
+  assert.equal((await post('/api/analyze-text',{text:'ordinary contract wording',jurisdiction:'XX'})).status,400);
   const broken = new FormData();
   broken.append('file', new Blob([Buffer.from('%PDF-1.4\nthis is deliberately corrupt')], {type:'application/pdf'}), 'broken.pdf');
   broken.append('jurisdiction','ZA');
