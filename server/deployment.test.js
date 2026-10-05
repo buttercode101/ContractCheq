@@ -47,3 +47,13 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal((await post('/api/unlock-analysis',{...unlock,email:'other@example.test'})).status,403);
  } finally {global.fetch=realFetch;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
 });
+
+
+test('keyboard and motion accessibility invariants remain in the shipped UI',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+ const css=fs.readFileSync(path.join(__dirname,'..','public','app.css'),'utf8');
+ assert.match(html,/class="skip-link"/);
+ assert.match(html,/aria-live=/);
+ assert.match(css,/:focus-visible/);
+ assert.match(css,/prefers-reduced-motion/);
+});
