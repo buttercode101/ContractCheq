@@ -104,7 +104,6 @@ const RULES = [
     score: 70,
     tags: ['NCA'],
     patterns: [
-      /interest\s+rate.{0,35}(per\s+month|pm|p\.m\.)/i,
       /penalty\s+interest/i,
       /credit\s+agreement.{0,45}(without|no).{0,25}(assessment|affordability)/i,
       /reckless\s+credit/i,
@@ -320,13 +319,18 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     }
   }
 
+  const title = `${fileName} ${text.slice(0,500)}`;
   let docType = 'Contract';
-  if (/lease|tenancy|rental|landlord|tenant|shorthold/i.test(text) || /lease|tenancy/i.test(fileName))
-    docType = 'Lease / Tenancy';
-  else if (/employment|employee|employer|job\s+offer|remuneration|salary/i.test(text) || /employ/i.test(fileName))
-    docType = 'Employment';
-  else if (/nda|non[- ]disclosure|confidential/i.test(text)) docType = 'NDA';
-  else if (/sale|purchase|seller|buyer/i.test(text)) docType = 'Sale Agreement';
+  if (/employment|employee|employer|job\s+offer|salary|remuneration/i.test(title)) docType = 'Employment';
+  else if (/non[- ]disclosure|\bnda\b|confidentiality\s+agreement/i.test(title)) docType = 'NDA';
+  else if (/sale|purchase|seller|buyer/i.test(title)) docType = 'Sale Agreement';
+  else if (/lease|tenancy|rental|landlord|tenant|shorthold/i.test(title)) docType = 'Lease / Tenancy';
+  else if (/credit|loan|borrower|lender/i.test(title)) docType = 'Loan / Credit';
+  else if (/data\s+processing|privacy/i.test(title)) docType = 'Data Processing';
+  else if (/services?|consultancy|supplier/i.test(title)) docType = 'Services Agreement';
+  else if (/employment|employee|employer|salary/i.test(text)) docType = 'Employment';
+  else if (/lease|tenancy|landlord|tenant/i.test(text)) docType = 'Lease / Tenancy';
+
 
   let score = 18;
   if (found.length) {
