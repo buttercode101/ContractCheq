@@ -1,0 +1,13 @@
+{
+  "framework": null,
+  "regions": [
+    "cpt1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cleanup",
+      "schedule": "0 2 * * *"
+    }
+  ],
+  "buildCommand": "node build-vercel.js"
+}

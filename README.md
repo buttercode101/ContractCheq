@@ -1,20 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# ContractCheck SA v3 — separate deployment
 
-# Run and deploy your AI Studio app
+Source: user-supplied ContractCheck-SA-FINAL.zip. This deployment is independent of existing ContractCheck production projects.
 
-This contains everything you need to run your app locally.
+## Run
 
-View your app in AI Studio: https://ai.studio/apps/360e8994-cbbb-40ee-8f93-e1c80f702703
+`npm ci` then `npm start`. Run `npm test` and `npm run test:smoke`.
 
-## Run Locally
+Vercel entry: index.js exports the Express server. Uploads use /tmp. PDF extraction uses the current PDFParse API. OCR language and WebAssembly assets are included in the server bundle.
 
-**Prerequisites:**  Node.js
+## Environment
 
+Connect a **private** Vercel Blob store to this project. The SDK uses BLOB_STORE_ID and Vercel-managed OIDC. Local development can use BLOB_READ_WRITE_TOKEN or the local file store.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Set PAYSTACK_PUBLIC_KEY, PAYSTACK_SECRET_KEY, optional GROQ_API_KEY/GROQ_MODEL and TINYFISH_API_KEY as server-side environment variables. Set CRON_SECRET for the daily expired-analysis cleanup. Never commit credentials.
+
+Pricing: R19 single report, R39 three reports, R99 ten reports. Receipts must match the paid product, exact ZAR amount and Paystack customer email. Re-verification does not add credits. Unlocks consume one credit atomically and retries of the same report are idempotent. The receipt is a bearer credential stored in the purchaser's browser.
+
+Scans expire after 48 hours and are removed by daily cleanup. Uploaded originals are deleted after processing. Optional enrichment sends document excerpts to the selected third-party services.
+
+Not legal advice. Rules-based risk screening does not prove legal validity or completeness. A real payment transaction has not been run as part of deployment verification.

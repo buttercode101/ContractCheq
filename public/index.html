@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"/>
+<title>ContractCheck — Understand your contract before you sign</title>
+<meta name="description" content="Upload a South African or UK contract and get a plain-language risk triage before you sign. Free preview; full report from R19. Not legal advice."/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta name="theme-color" content="#f7f8f4"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/app.css"/>
+
+</head>
+<body>
+<div id="root"></div>
+<script>
+const h = React.createElement;
+const {useState, useEffect, useCallback, useRef} = React;
+const API = '';
+
+const DEMOS = {"lease":{"score":85,"level":"High Risk","issuesCount":3,"exposure":"Not estimated","docTitle":"Residential Lease Agreement (demo)","docType":"Lease / Tenancy • demo","issues":[{"id":"rha-entry-0","law":"Rental Housing Regulations reg 9","lawRef":"Rental Housing Regulations reg 9 • Constitution s14","riskScore":"90/100","severity":"HIGH THREAT","excerpt":"ESIDENTIAL LEASE AGREEMENT Landlord may enter the premises at any time without notice for inspection or maintenance. The deposit is non-refundable und","analysis":"Section 14 of the Constitution protects privacy, and Rental Housing unfair-practice regulations require reasonable notice and entry at a reasonable time for permitted landlord access.","recommendation":"Require reasonable prior notice for non-emergency entry and limit access to permitted purposes at reasonable times.","impact":"Claim for invasion of privacy; possible reduction of rental for impaired use and enjoyment.","tags":["RHA","Constitution"],"rawScore":90,"source":"rules"},{"id":"rha-dep-1","law":"CPA s48 & s51","lawRef":"CPA s48 & s51 • RHA s5(3)(c)","riskScore":"85/100","severity":"HIGH THREAT","excerpt":"tice for inspection or maintenance. The deposit is non-refundable under all circumstances, even if the landlord cancels. No interest will accrue","analysis":"The Consumer Protection Act prohibits excessively one-sided terms. Forfeiture despite landlord fault is unfair under CPA s48/s51. RHA requires the deposit in an interest-bearing account.","recommendation":"Ensure deposit is refundable subject only to reasonable proven damages. Request proof of interest-bearing account.","impact":"Risk of losing some or all of the deposit even when not at fault; the amount depends on the contract, rent and proven deductions.","tags":["CPA","RHA"],"rawScore":85,"source":"rules"},{"id":"popia-2","law":"POPIA s11 & s18","lawRef":"POPIA s11 & s18 • POPIA s8","riskScore":"88/100","severity":"HIGH THREAT","excerpt":"rest will accrue on the deposit. Tenant consents to the landlord selling the tenant ID number, biometric data and bank statements to third-party marketing partners.","analysis":"POPIA requires specific, informed consent and purpose limitation. Blanket consent to sell ID numbers or biometric data to marketing partners exceeds what is reasonably necessary and violates data minimisation.","recommendation":"Strike marketing sale clauses. Limit consent to credit checks strictly necessary for this agreement; require deletion after vetting.","impact":"Complaints to the Information Regulator; personal data exposure and fraud risk.","tags":["POPIA"],"rawScore":88,"source":"rules"}],"coverageWarning":"Limited rule-based triage, not a complete legal review. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.","highlightedClauses":["ESIDENTIAL LEASE AGREEMENT Landlord may enter the premises a","tice for inspection or maintenance. The deposit is non-refun","rest will accrue on the deposit. Tenant consents to the land"],"rulesVersion":"3.1-sa-2026","jurisdiction":"ZA","_id":"demo-sample-lease","isDemo":true,"isPaid":true,"freePreview":false,"extraction":{"method":"engine-snapshot","pages":1,"confidence":1}},"employment":{"score":65,"level":"Medium Risk","issuesCount":1,"exposure":"Not estimated","docTitle":"Employment Offer Letter (demo)","docType":"Employment • demo","issues":[{"id":"bcea-0","law":"BCEA s9 & s10","lawRef":"BCEA s9 & s10 • BCEA s14","riskScore":"82/100","severity":"HIGH THREAT","excerpt":"EMPLOYMENT OFFER The employee shall work 55 hours per week. Overtime is unpaid. Employee waives meal intervals. Remuneration is below the","analysis":"For employees to whom these working-time provisions apply, the BCEA generally limits ordinary hours to 45 per week, requires overtime agreement and provides a 1.5× overtime-pay baseline while allowing specified paid-time-off arrangements. Meal-interval rules also allow limited written variations. A blanket 55-hour ordinary week, unpaid overtime or broad meal-break waiver deserves review.","recommendation":"Check whether the BCEA working-time provisions apply to this employee. If they do, align ordinary hours, overtime agreement/compensation and meal intervals with sections 9, 10 and 14, including any lawful written variations.","impact":"Unpaid labour claim and CCMA dispute; employer may be liable for arrears.","tags":["BCEA","LRA"],"rawScore":82,"source":"rules"}],"coverageWarning":"Limited rule-based triage, not a complete legal review. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.","highlightedClauses":["EMPLOYMENT OFFER The employee shall work 55 hours per week. "],"rulesVersion":"3.1-sa-2026","jurisdiction":"ZA","_id":"demo-sample-employment","isDemo":true,"isPaid":true,"freePreview":false,"extraction":{"method":"engine-snapshot","pages":1,"confidence":1}},"ukTenancy":{"score":90,"level":"High Risk","issuesCount":4,"exposure":"Not estimated","docTitle":"Assured Shorthold Tenancy (demo)","docType":"Lease / Tenancy • demo","issues":[{"id":"uk-deposit-cap-0","law":"Tenant Fees Act 2019","lawRef":"Tenant Fees Act 2019 • Housing Act 2004","riskScore":"88/100","severity":"HIGH THREAT","excerpt":"ENANCY AGREEMENT The Tenant shall pay a security deposit equal to eight weeks rent. The deposit is non-refundable if the Tenant leaves early. The Landlord ma","analysis":"In England, the Tenant Fees Act 2019 caps tenancy deposits (typically 5 weeks' rent where annual rent is under £50,000). Non-refundable deposits are generally not a lawful substitute for a protected deposit.","recommendation":"Cap the deposit at the legal maximum and protect it in an authorised scheme with prescribed information within 30 days.","impact":"Deposit protection claim; possible statutory penalties.","tags":["UK","Tenancy"],"rawScore":88,"source":"rules"},{"id":"uk-s21-trap-1","law":"Renters’ Rights Act 2025","lawRef":"Renters’ Rights Act 2025 • Housing Act 1988","riskScore":"70/100","severity":"MEDIUM RISK","excerpt":"e Tenant leaves early. The Landlord may terminate the tenancy without reason on two weeks notice. The Tenant consents to the Landlord selling personal data","analysis":"For England’s private assured tenancies, Section 21 no-fault eviction was abolished from 1 May 2026 under the Renters’ Rights Act 2025. Possession generally requires a statutory ground and the applicable notice and court process. Historical agreements and transitional cases need individual review.","recommendation":"Check the current possession grounds, notice periods and court process with a qualified adviser. Do not rely on a new Section 21 notice for an England private assured tenancy.","impact":"Invalid notice; delayed possession; costs.","tags":["UK","Tenancy"],"rawScore":70,"source":"rules"},{"id":"uk-unfair-2","law":"Consumer Rights Act 2015","lawRef":"Consumer Rights Act 2015 • Unfair Contract Terms Act 1977","riskScore":"86/100","severity":"HIGH THREAT","excerpt":"al data to marketing partners. Landlord excludes all liability for negligence including personal injury.","analysis":"The Consumer Rights Act 2015 and UCTA restrict exclusion of liability for negligence causing death or personal injury and unfair terms in consumer contracts.","recommendation":"Remove statutory-rights waivers. Limit exclusions to what the law allows.","impact":"Unenforceable terms; regulatory action; refund claims.","tags":["UK","Consumer"],"rawScore":86,"source":"rules"},{"id":"uk-gdpr-3","law":"UK GDPR","lawRef":"UK GDPR • Data Protection Act 2018","riskScore":"85/100","severity":"HIGH THREAT","excerpt":"reason on two weeks notice. The Tenant consents to the Landlord selling personal data to marketing partners. Landlord excludes all liability for negligence including personal inj","analysis":"UK GDPR requires a lawful basis and purpose limitation. Blanket consent to sell personal data for marketing is high-risk.","recommendation":"Separate marketing consent; allow easy withdrawal; minimise data shared.","impact":"ICO complaint; fines; loss of trust.","tags":["UK","Privacy"],"rawScore":85,"source":"rules"}],"coverageWarning":"Limited rule-based triage. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.","highlightedClauses":["ENANCY AGREEMENT The Tenant shall pay a security deposit equ","e Tenant leaves early. The Landlord may terminate the tenanc","al data to marketing partners. Landlord excludes all liabili","reason on two weeks notice. The Tenant consents to the Landl"],"rulesVersion":"1.1-uk-2026","jurisdiction":"UK","_id":"demo-sample-uk-tenancy","isDemo":true,"isPaid":true,"freePreview":false,"extraction":{"method":"engine-snapshot","pages":1,"confidence":1}}};
+
+async function track(name, props) {
+  try {
+    await fetch(API + '/api/events', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: name, props: props || {}})
+    });
+  } catch (e) {}
+}
+
+function loadLS() {
+  try { return JSON.parse(localStorage.getItem('cc_v3') || '{}'); } catch (e) { return {}; }
+}
+function saveLS(p) {
+  try { localStorage.setItem('cc_v3', JSON.stringify(Object.assign({}, loadLS(), p))); return true; } catch(e) { return false; }
+}
+
+function Icon({name,size=20}) {
+  const paths={
+    check:'M5 12l4 4L19 6', arrow:'M4 12h16m-6-6 6 6-6 6', back:'M20 12H4m6-6-6 6 6 6',
+    upload:'M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4', document:'M14 3H6v18h12V7l-4-4zM14 3v5h4M9 12h6m-6 4h6',
+    shield:'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3zM8 12l3 3 5-6',
+    menu:'M4 7h16M4 12h16M4 17h16', close:'m6 6 12 12M18 6 6 18', download:'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',
+    lock:'M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3', chevron:'m6 9 6 6 6-6', globe:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18',
+    note:'M5 3h14v18H5zM9 8h6m-6 4h6m-6 4h3', external:'M14 3h7v7m0-7L10 14M10 3H3v18h18v-7', briefcase:'M9 7V4h6v3M3 7h18v13H3zM3 12h18m-9-2v4'
+  };
+  return h('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true,focusable:false},h('path',{d:paths[name]||paths.document}));
+}
+function Gauge({score=0,level=''}) {
+  const r=54,c=2*Math.PI*r,pct=Math.min(100,Math.max(0,score))/100;
+  const col=score>=70?'#cb3e36':score>=40?'#a96813':'#166653';
+  return h('div',{className:'risk-gauge','aria-label':score+' out of 100, '+level},
+    h('svg',{viewBox:'0 0 140 140','aria-hidden':true},h('g',{transform:'rotate(-135 70 70)'},
+      h('circle',{cx:70,cy:70,r,fill:'none',stroke:'#e8ece7',strokeWidth:9,strokeDasharray:c*.75+' '+c}),
+      h('circle',{cx:70,cy:70,r,fill:'none',stroke:col,strokeWidth:9,strokeLinecap:'round',strokeDasharray:c*.75+' '+c,strokeDashoffset:c*.75*(1-pct)}))),
+    h('div',{className:'gauge-label'},h('strong',null,score),h('span',null,'out of 100'),h('b',{style:{color:col}},level)));
+}
+function trapFocus(e) {
+  if(e.key!=='Tab')return;
+  const items=Array.from(e.currentTarget.querySelectorAll('button:not([disabled]),input,textarea,a[href]')).filter(x=>x.getClientRects().length);
+  const first=items[0],last=items[items.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+}
+
+function App() {
+  const [ls] = useState(loadLS);
+  var _s = useState('landing'); var view = _s[0]; var setView = _s[1];
+  var _c = useState({paystackPublicKey: '', prices: {single: 1900, pack3: 3900, pack10: 9900}, maxFileMb: 4}); var config = _c[0]; var setConfig = _c[1];
+  var _ok = useState('…'); var serverOk = _ok[0]; var setServerOk = _ok[1];
+  var _j = useState('ZA'); var jurisdiction = _j[0]; var setJurisdiction = _j[1];
+  var _en = useState(false); var enrichLLM = _en[0]; var setEnrichLLM = _en[1];
+  var _sc = useState(false); var scanning = _sc[0]; var setScanning = _sc[1];
+  var _sm = useState(''); var scanMsg = _sm[0]; var setScanMsg = _sm[1];
+  const [checkout,setCheckout] = useState(null);
+  const [notice,setNotice] = useState('');
+  const [dragging,setDragging] = useState(false);
+  const [menuOpen,setMenuOpen] = useState(false);
+  const [storageError,setStorageError] = useState(false);
+  const [unlocking,setUnlocking] = useState(false);
+  const overlayOpener=useRef(null);
+  const suppressOverlayFocus=useRef(false);
+  const initialView=useRef(true);
+  var _er = useState(''); var error = _er[0]; var setError = _er[1];
+  var _r = useState(null); var result = _r[0]; var setResult = _r[1];
+  var _u = useState(ls.unlocked || []); var unlocked = _u[0]; var setUnlocked = _u[1];
+  var _cr = useState(ls.credits || 0); var credits = _cr[0]; var setCredits = _cr[1];
+  const [paymentRef,setPaymentRef] = useState(ls.paymentRef || '');
+  var _em = useState(ls.email || ''); var payEmail = _em[0]; var setPayEmail = _em[1];
+  var _n = useState(ls.notes || {}); var notes = _n[0]; var setNotes = _n[1];
+
+  useEffect(function() {
+    track('page_view', {});
+    fetch(API + '/api/config').then(function(r) { return r.json(); }).then(function(c) {
+      if(!c.prices || typeof c.prices.single !== 'number')throw new Error('Configuration unavailable');
+      setConfig(c);
+      setServerOk('online');
+    }).catch(function() { setServerOk('offline'); });
+  }, []);
+
+  useEffect(function() {
+    setStorageError(!saveLS({credits: credits, unlocked: unlocked, email: payEmail, notes: notes, paymentRef: paymentRef}));
+  }, [credits, unlocked, payEmail, notes, paymentRef]);
+
+  useEffect(()=>{
+    window.scrollTo({top:0,behavior:'instant'});
+    if(!initialView.current)document.getElementById('main-content')?.focus({preventScroll:true});
+    initialView.current=false;
+  },[view]);
+  useEffect(()=>{
+    if(!checkout&&!menuOpen)return;
+    const opener=overlayOpener.current;
+    const previous=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    const onKey=e=>{if(e.key==='Escape'){setCheckout(null);setMenuOpen(false);}};
+    window.addEventListener('keydown',onKey);
+    if(menuOpen)document.querySelector('#mobile-menu button')?.focus();
+    return ()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',onKey);if(!suppressOverlayFocus.current)opener?.focus({preventScroll:true});suppressOverlayFocus.current=false;};
+  },[!!checkout,menuOpen]);
+  function go(v){setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
+
+
+  var isUnlocked = result && (result.isPaid || result.isDemo || (unlocked.indexOf(result._id) >= 0));
+
+  var openDemo = useCallback(function(key) {
+    var d = DEMOS[key];
+    if (!d) return;
+    setError('');
+    setJurisdiction(d.jurisdiction || 'ZA');
+    setResult(d);
+    setView('result');
+    track('demo_open', {id: key});
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }, []);
+
+  var runFile = useCallback(function(file) {
+    if (!file) return;
+    setError('');
+    if(file.size > (config.maxFileMb || 4)*1024*1024){setError('This file is too large. Choose a file under '+(config.maxFileMb || 4)+'MB.');return;}
+    if(!/\.(pdf|txt|png|jpg|jpeg|webp|bmp|tif|tiff)$/i.test(file.name)){setError('Choose a PDF, text file, or a clear photo of your document.');return;}
+    setScanning(true);
+    setScanMsg('Reading document…');
+    track('upload_start', {jurisdiction: jurisdiction, name: file.name});
+    var fd = new FormData();
+    fd.append('file', file);
+    fd.append('jurisdiction', jurisdiction);
+    if (enrichLLM) fd.append('enrich', '1');
+    setScanMsg(enrichLLM ? 'Reading your document and checking for risks…' : 'Checking your document for risks…');
+    fetch(API + '/api/analyze', {method: 'POST', body: fd})
+      .then(function(res) { return res.json().then(function(data) { return {res: res, data: data}; }); })
+      .then(function(x) {
+        if (!x.res.ok) throw new Error(x.data.error || x.data.hint || 'Analysis failed');
+        var data = x.data;
+        if (data.freePreview && data.issuesLocked) {
+          data.issues = (data.issues || []).concat((data.issuesLocked || []).map(function(p) {
+            return Object.assign({}, p, {
+              analysis: 'Unlock for full analysis & recommendations.',
+              recommendation: '',
+              impact: '',
+              locked: true
+            });
+          }));
+          data._locked = true;
+        }
+        setResult(data);
+        setView('result');
+        track('analysis_view', {score: data.score, level: data.level, jurisdiction: data.jurisdiction || jurisdiction, issues: data.issuesCount});
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      })
+      .catch(function(e) {
+        setError(e.message || 'Analysis failed');
+        track('analyze_error', {message: String(e.message || '').slice(0, 80)});
+      })
+      .finally(function() {
+        setScanning(false);
+        setScanMsg('');
+      });
+  }, [jurisdiction, enrichLLM, config.maxFileMb]);
+
+  function onFile(e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) runFile(f);
+    e.target.value = '';
+  }
+
+  const startPay = ({amount, label, product})=>{
+    setError('');
+    const key = config.paystackPublicKey;
+    if(!key || !window.PaystackPop){
+      setError('Checkout is unavailable right now. Please try again shortly.');window.scrollTo({top:0});
+      return;
+    }
+    const email = payEmail.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product});return;}
+    setPayEmail(email);
+    track('paywall_click',{product,amount});
+    const handler = PaystackPop.setup({
+      key,
+      email,
+      amount,
+      currency: 'ZAR',
+      ref: 'CC-'+crypto.randomUUID(),
+      metadata: { product, analysisId: result?._id||'' },
+      callback: function(response){
+        fetch(API+'/api/verify-payment',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({reference: response.reference, email, product})
+        }).then(r=>r.json()).then(async v=>{
+          if(!v.ok) throw new Error(v.error||'Verification failed');
+          setPaymentRef(v.grantId);
+          setCredits(v.credits||0);
+          if(product==='single' && result?._id){
+            const full = await fetch(API+'/api/unlock-analysis',{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({analysisId: result._id, reference: response.reference, email})
+            }).then(r=>r.json());
+            if(full.error) throw new Error(full.error);
+            setResult(full);
+            setCredits(full.credits||0);
+            setUnlocked(u=>[...new Set([...u, result._id])]);
+            track('unlock_success',{via:'payment'});
+          } else {
+            setCredits(c=>Math.max(c, v.credits||0));
+            setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
+          }
+        }).catch(err=>{
+          setError('Payment verification or unlock failed: '+err.message+'. Keep your reference: '+response.reference);window.scrollTo({top:0});
+        });
+      },
+      onClose: function(){ track('pay_close',{product}); }
+    });
+    handler.openIframe();
+  };
+
+  const unlock = async ()=>{
+    if(!result || unlocking) return;
+    setUnlocking(true);
+    try {
+    if(credits>0 && payEmail && paymentRef){
+      const full = await fetch(API+'/api/unlock-analysis',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({analysisId: result._id, reference:paymentRef, email: payEmail})
+      }).then(r=>r.json());
+      if(full.error){ setError(full.error);window.scrollTo({top:0});return; }
+      setResult(full);
+      setCredits(full.credits||0);
+      setUnlocked(u=>[...new Set([...u, result._id])]);
+      track('unlock_success',{via:'credit'});
+      return;
+    }
+    beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single'});
+    } catch(e){setError('Unable to unlock this report. Please check your connection and try again.');window.scrollTo({top:0});} finally {setUnlocking(false);}
+  };
+
+  function exportPdf() {
+    if (!result) return;
+    if (!window.jspdf){setError('PDF export is unavailable. Please check your connection and try again.');window.scrollTo({top:0});return;}
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF();
+    var y = 16;
+    function line(t, s) {
+      s = s || 11;
+      var lines = doc.splitTextToSize(t, 180);
+      doc.setFontSize(s);
+      doc.text(lines, 14, y);
+      y += lines.length * (s * 0.45) + 4;
+      if (y > 280) { doc.addPage(); y = 16; }
+    }
+    doc.setFontSize(16);
+    doc.text('ContractCheck Report', 14, y);
+    y += 8;
+    line('Score: ' + result.score + '/100 · ' + result.level + ' · ' + (result.jurisdiction || 'ZA'), 11);
+    line(result.docTitle || '', 10);
+    line('DISCLAIMER: Preliminary triage only. Not legal advice. Consult a qualified attorney.', 8);
+    y += 2;
+    (result.issues || []).forEach(function(iss, i) {
+      line((i + 1) + '. [' + (iss.severity || '') + '] ' + (iss.law || ''), 11);
+      if (iss.excerpt) line('Excerpt: ' + iss.excerpt, 9);
+      if (iss.analysis) line(iss.analysis, 9);
+      if (iss.recommendation) line('Ask attorney: ' + iss.recommendation, 9);
+      y += 2;
+    });
+    doc.save('ContractCheck-' + (result._id || 'report') + '.pdf');
+    track('export_pdf', {id: result._id});
+  }
+
+  function nav(label,v){return h('button',{onClick:()=>go(v),'aria-current':view===v?'page':undefined,className:'nav-item'+(view===v?' active':'')},label);}
+  function demoCard(key,title,blurb){
+    const d=DEMOS[key];
+    return h('button',{type:'button',onClick:()=>openDemo(key),className:'example-card','aria-label':'Explore '+title+' example report'},
+      h('div',{className:'example-top'},h('span',{className:'example-icon'},h(Icon,{name:key==='employment'?'briefcase':'document',size:22})),h('span',{className:'example-region'},d.jurisdiction==='UK'?'UK':'South Africa')),
+      h('h3',null,title),h('p',null,blurb),
+      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,d.score),h('span',null,'/100 · High risk')),h(Icon,{name:'arrow'})),
+      h('span',{className:'example-link'},'Explore report'));
+  }
+  let body;
+  if(view==='landing'){
+    body=h('section',{className:'landing'},
+      h('div',{className:'hero-grid'},
+        h('div',{className:'hero-intro'},
+          h('div',{className:'eyebrow'},h('span',{className:'eyebrow-dot'}),'Contract clarity, before the commitment'),
+          h('h1',{className:'hero-title serif'},'Read the risks.',h('br'),h('em',null,'Before you sign.')),
+          h('p',{className:'hero-copy'},'A clearer picture of your lease, job offer, or agreement. See the clauses worth a second look, with South African or UK rules.'),
+          h('div',{className:'hero-proof'},h('span',null,h(Icon,{name:'check',size:16}),'Free score + 3 flags'),h('span',null,h(Icon,{name:'check',size:16}),'Full reports from R19')),
+          h('div',{className:'hero-caption'},h(Icon,{name:'shield',size:17}),'Your document. Your decision. No subscription.')),
+        h('div',{className:'upload-panel'},
+          h('div',{className:'panel-heading'},h('div',null,h('span',{className:'eyebrow'},'Start with a free scan'),h('h2',null,'Check your contract')),h('span',{className:'panel-icon'},h(Icon,{name:'document',size:25}))),
+          h('p',{className:'field-label',id:'jurisdiction-label'},'Which rules apply?'),
+          h('div',{className:'country-switch',role:'group','aria-labelledby':'jurisdiction-label'},['ZA','UK'].map(j=>h('button',{key:j,type:'button',disabled:scanning,'aria-pressed':jurisdiction===j,onClick:()=>setJurisdiction(j),className:jurisdiction===j?'selected':''},h('span',{className:'country-code'},j==='ZA'?'ZA':'UK'),h('span',null,j==='ZA'?'South Africa':'United Kingdom'),jurisdiction===j&&h(Icon,{name:'check',size:15})))),
+          h('div',{className:'drop-area'+(dragging?' dragging':''),onDragOver:e=>{e.preventDefault();if(!scanning)setDragging(true);},onDragLeave:()=>setDragging(false),onDrop:e=>{e.preventDefault();setDragging(false);if(!scanning)runFile(e.dataTransfer.files[0]);},'aria-busy':scanning},
+            scanning?h('div',{role:'status','aria-live':'polite',className:'scan-status'},h('span',{className:'spinner'}),h('strong',null,scanMsg),h('p',null,'Keep this page open. Larger files may take a little longer.')):h(React.Fragment,null,
+              h('span',{className:'upload-icon'},h(Icon,{name:'upload',size:25})),h('strong',{className:'drop-title'},'Your next signature starts here'),h('p',{className:'desktop-drop-copy'},'Drag your file here, or choose it below.'),
+              h('label',{className:'upload-label'},h(Icon,{name:'upload',size:18}),'Choose a file',h('input',{className:'file-control',type:'file','aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})),
+              h('p',{className:'file-hint'},'PDF, text, or a clear photo · up to '+(config.maxFileMb||4)+' MB'))),
+          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},'Document excerpts may be shared with AI providers.'))),
+          h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Files are deleted after processing. ',h('button',{onClick:()=>go('privacy')},'Privacy details'))),
+          serverOk==='offline'&&h('p',{role:'status',className:'connection-note'},'Connection unavailable. Please try again shortly.'))),
+      h('section',{className:'how-section','aria-label':'How it works'},h('div',{className:'how-grid'},[['01','Upload','Choose your rules and add a document.'],['02','Understand','Read your score and the flagged clauses.'],['03','Decide','Take the next step with a clearer picture.']].map(x=>h('div',{key:x[0],className:'how-item'},h('span',{className:'how-num'},x[0]),h('div',null,h('h3',null,x[1]),h('p',null,x[2])))))),
+      h('section',{className:'examples-section'},h('div',{className:'section-heading'},h('div',null,h('div',{className:'eyebrow'},'A look inside'),h('h2',null,'Know what to expect.'),h('p',null,'Explore a full example report before you upload.')),h('span',{className:'section-caption'},'Sample documents · Real rule-engine results')),
+        h('div',{className:'example-grid'},demoCard('lease','Residential lease','Access, deposits, and personal data.'),demoCard('employment','Employment offer','Working hours, overtime, and your rights.'),demoCard('ukTenancy','UK tenancy agreement','Deposits, notices, and liability.')),
+        h('details',{className:'sample-downloads'},h('summary',null,h(Icon,{name:'download',size:18}),'Download the sample contracts',h(Icon,{name:'chevron',size:16})),h('div',{className:'sample-links'},[['sample-lease.txt','SA lease'],['sample-employment.txt','SA employment'],['sample-uk-tenancy.txt','UK tenancy']].map(x=>h('a',{key:x[0],href:'/samples/'+x[0],download:true},x[1],h(Icon,{name:'download',size:16})))),h('p',null,'Upload a sample to check its score and flags yourself.'))),
+      h('section',{className:'price-strip'},h('div',null,h('div',{className:'eyebrow'},'Clarity, without a commitment'),h('h2',{className:'serif'},'Start free. Go deeper for R19.'),h('p',null,'One report, or a pack for the next few. Always a one-time payment.')),h('button',{className:'primary-button',onClick:()=>go('pricing')},'Compare plans',h(Icon,{name:'arrow',size:18}))),
+      h('p',{className:'privacy-note'},'Automated contract triage, not legal advice. A starting point for a conversation with a qualified lawyer.'));
+  }
+  if(view==='result'&&result){
+    const issues=result.issues||[];
+    const region=(result.jurisdiction||jurisdiction)==='UK'?'UK':'South Africa';
+    body=h('section',{className:'report-content'},
+      h('div',{className:'report-toolbar'},h('button',{className:'text-button',onClick:()=>go('landing')},h(Icon,{name:'back',size:18}),'New scan'),h('span',{className:'rule-label'},region+' rule pack'),
+        isUnlocked?h('button',{onClick:exportPdf,className:'primary-button'},h(Icon,{name:'download',size:17}),'Export PDF'):h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},h(Icon,{name:'lock',size:16}),unlocking?'Unlocking…':credits>0?'Use a credit':'Full report · R19')),
+      result.isDemo&&h('div',{className:'example-banner'},h(Icon,{name:'document',size:19}),h('p',null,h('strong',null,'Example report. '),'A snapshot of our published sample. Upload the sample to verify the score and flags.')),
+      h('div',{className:'report-summary'},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract'),
+        h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated')))),h(Gauge,{score:result.score,level:result.level}),
+        h('p',{className:'score-explainer'},'A higher score means more potential risk. This is an automated assessment, not a legal conclusion.'),
+        result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
+      !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
+      h('div',{className:'findings-heading'},h('h2',null,'What deserves a second look'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
+      h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
+        h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),
+        h('div',{className:'finding-body'},m.source==='groq'&&h('span',{className:'ai-tag'},'AI-suggested'),m.excerpt&&h('blockquote',null,h('span',{className:'content-label'},'From your contract'),h('p',null,m.excerpt)),
+          m.locked?h('p',{className:'locked-copy'},h(Icon,{name:'lock',size:17}),'Unlock this report to read the analysis and recommendations.'):h(React.Fragment,null,
+            h('div',{className:'analysis-copy'},h('h4',null,'Why it matters'),h('p',null,m.analysis)),
+            isUnlocked&&m.recommendation&&h('div',{className:'recommendation'},h('h4',null,'Discuss with a lawyer'),h('p',null,m.recommendation)),
+            isUnlocked&&m.impact&&h('p',{className:'impact-copy'},h('strong',null,'Potential impact. '),m.impact),
+            isUnlocked&&m.lawRef&&h('p',{className:'law-reference'},h(Icon,{name:'document',size:15}),m.lawRef))))),
+        issues.length===0&&h('div',{className:'empty-findings'},h(Icon,{name:'document',size:26}),h('h3',null,'No flags found in this scan'),h('p',null,'The rule engine may not cover every clause. A qualified lawyer can help with important decisions.'))),
+      (result.level==='High Risk'||result.score>=70)&&h('aside',{className:'legal-guidance'},h('div',{className:'guidance-icon'},h(Icon,{name:'shield',size:24})),h('div',null,h('h2',null,'A second opinion is a good next step.'),h('p',null,'This document has high-risk flags. Speak to a qualified lawyer before you sign.'),h('div',{className:'guidance-links'},h('a',{href:region==='UK'?'https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/find-a-solicitor':'https://www.lssa.org.za/',target:'_blank',rel:'noopener noreferrer',onClick:()=>track('attorney_referral_click',{jurisdiction:result.jurisdiction,score:result.score})},region==='UK'?'Find a UK solicitor':'Find an SA attorney',h(Icon,{name:'external',size:16})),h('a',{href:region==='UK'?'https://www.citizensadvice.org.uk/':'https://www.legal-aid.co.za/',target:'_blank',rel:'noopener noreferrer'},region==='UK'?'Citizens Advice':'Legal Aid SA',h(Icon,{name:'external',size:16}))))),
+      h('section',{className:'notes-card'},h('div',{className:'notes-heading'},h('div',null,h('h2',null,'Your notes'),h('p',null,storageError?'Browser storage is unavailable. Copy your notes before leaving.':'Saved on this device. Add questions to take to your lawyer.')),h(Icon,{name:'note',size:23})),h('label',{htmlFor:'private-notes',className:'sr-only'},'Private notes for this report'),h('textarea',{id:'private-notes',placeholder:'Questions to ask, clauses to discuss…',value:notes[result._id]||'',onChange:e=>{const v=e.target.value;setNotes(n=>({...n,[result._id]:v}));}})),
+      h('div',{className:'report-footnote'},h('p',null,'Check & flag only. We do not give legal advice or rewrite clauses.'),h('details',null,h('summary',null,'Report details',h(Icon,{name:'chevron',size:15})),h('p',null,'Rule version: '+(result.rulesVersion||'Not supplied')))));
+  }
+  if(view==='pricing'){
+    const plans=[
+      {product:'free',label:'Free scan',price:'R0',sub:'A first look, without a commitment.',cta:'Upload a contract',features:['Your risk score and risk level','Analysis of the first 3 flags','SA or UK rules'],note:'No payment needed.'},
+      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Every flag and recommendation','Impact notes for flagged clauses','Downloadable PDF report'],note:'One full-report credit.',featured:true},
+      {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
+      {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
+    ];
+    body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
+      h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
+      h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
+      h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Plain-English findings','Flagged excerpts, severity, and relevant law references.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
+      h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
+        ['How do report credits work?','Each credit unlocks one full report. Keep your Paystack payment reference and receipt email to use remaining credits. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
+        ['What do I get for free?','Your risk score, risk level, document type, and analysis of the first 3 flagged issues. You can also see the titles of remaining flags. Full recommendations, impact notes, and PDF export require an unlock.'],
+        ['Is this legal advice?','No. ContractCheck provides automated risk triage. Results may be incomplete or incorrect. We do not draft or rewrite clauses, and we do not replace a qualified attorney.'],
+        ['What happens if I add AI insights?','This optional setting sends document excerpts to AI providers. Extra AI-suggested flags are labelled in your report. Leave it off to use only the SA or UK rule engine.'],
+        ['What if a payment does not unlock my report?','Keep your Paystack reference and receipt email. Refunds are considered case by case where an unlock fails after successful payment. A support email has not been published yet.']
+      ].map(x=>h('details',{key:x[0]},h('summary',null,x[0],h(Icon,{name:'chevron',size:18})),h('p',null,x[1])))));
+  }
+
+  if (view === 'privacy') {
+    body = h('section', {className: 'document-page'},
+      h('h1', {className: 'serif'}, 'Privacy Policy'),
+      h('p', null, 'Files are processed to extract text and produce a risk report. We do not sell your documents.'),
+      h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results are available for 48 hours so you can unlock them after payment. Expired records are removed by the daily cleanup.'),
+      h('p', null, 'If you enable AI enrichment, text excerpts are sent to Groq and/or TinyFish under their terms. Disable AI enrichment to keep analysis on our rules engine only.'),
+      h('p', null, 'Payments are processed by Paystack. We receive payment confirmation, not your full card number.'),
+      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+    );
+  }
+
+  if (view === 'terms') {
+    body = h('section', {className: 'document-page'},
+      h('h1', {className: 'serif'}, 'Terms of Use'),
+      h('p', null, 'ContractCheck provides automated risk triage only. It is not a law firm and does not provide legal advice. No attorney–client relationship is created.'),
+      h('p', null, 'Check & Flag Only: we identify potential issues and cite publicly known legal themes; we do not draft or rewrite contracts for you.'),
+      h('p', null, 'Results may be incomplete or incorrect. Always consult a qualified attorney for decisions that matter.'),
+      h('p', null, 'Pricing: digital delivery after Paystack verification. Refunds case-by-case if unlock fails after successful payment (provide reference).'),
+      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+    );
+  }
+
+  if (view === 'contact') {
+    body = h('section', {className: 'document-page contact-page'},
+      h('h1', {className: 'serif'}, 'Contact'),
+      h('p', {className: 'document-copy'}, 'Support & payment issues'),
+      h('p', {className: 'document-copy'}, 'A support email has not been published yet. Keep your payment reference and receipt email if you experience an unlock problem.'),
+      h('p', {className: 'document-copy'}, 'Include your Paystack reference for payment problems.'),
+      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+    );
+  }
+
+  return h(React.Fragment,null,
+    h('a',{href:'#main-content',className:'skip-link'},'Skip to content'),
+    h('header',{className:'site-header',inert:checkout||menuOpen?'':undefined},h('div',{className:'header-inner'},
+      h('button',{onClick:()=>go('landing'),className:'brand','aria-label':'ContractCheck home'},h('span',{className:'brand-mark'},h(Icon,{name:'check',size:21})),h('span',{className:'brand-name'},'ContractCheck')),
+      h('nav',{className:'desktop-nav','aria-label':'Main navigation'},nav('Check a contract','landing'),nav('Pricing','pricing'),nav('Privacy','privacy'),nav('Terms','terms'),nav('Contact','contact')),
+      h('div',{className:'header-actions'},credits>0&&h('span',{className:'credits-badge'},credits+' '+(credits===1?'credit':'credits')),h('div',{className:'mobile-pricing'},nav('Pricing','pricing')),h('button',{className:'menu-toggle','aria-label':'Open navigation menu','aria-expanded':menuOpen,'aria-controls':'mobile-menu',onClick:()=>{suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setMenuOpen(true);}},h(Icon,{name:'menu',size:22}))))),
+    h('div',{className:'app-shell',inert:checkout||menuOpen?'':undefined},
+      error&&h('div',{className:'error-banner',role:'alert'},h('p',null,error),h('button',{'aria-label':'Dismiss error',onClick:()=>setError('')},h(Icon,{name:'close',size:20}))),
+      notice&&h('div',{className:'notice-banner',role:'status'},h('p',null,notice),h('button',{'aria-label':'Dismiss notification',onClick:()=>setNotice('')},h(Icon,{name:'close',size:20}))),
+      h('main',{id:'main-content',tabIndex:-1},body),
+      h('footer',{className:'site-footer'},h('div',null,h('span',{className:'footer-brand'},'ContractCheck'),h('p',null,'A clearer view, before you sign.')),h('div',{className:'footer-links'},h('button',{onClick:()=>go('privacy')},'Privacy'),h('button',{onClick:()=>go('terms')},'Terms'),h('span',null,'© '+new Date().getFullYear())))),
+    menuOpen&&h('div',{className:'modal-backdrop menu-backdrop',onClick:e=>{if(e.target===e.currentTarget)setMenuOpen(false);}},h('section',{id:'mobile-menu',role:'dialog','aria-modal':true,'aria-labelledby':'menu-title',className:'mobile-menu',onKeyDown:trapFocus},h('div',{className:'menu-heading'},h('h2',{id:'menu-title'},'Explore ContractCheck'),h('button',{'aria-label':'Close navigation menu',className:'icon-button',onClick:()=>setMenuOpen(false)},h(Icon,{name:'close'}))),h('nav',{'aria-label':'Mobile navigation'},[['Check a contract','landing'],['Pricing','pricing'],['Privacy','privacy'],['Terms','terms'],['Contact','contact']].map(x=>h('button',{key:x[1],onClick:()=>go(x[1]),'aria-current':view===x[1]?'page':undefined},x[0],h(Icon,{name:'arrow',size:18})))),h('p',null,'South Africa & UK · Check & flag only'))),
+    checkout&&h('div',{className:'modal-backdrop',onClick:e=>{if(e.target===e.currentTarget)setCheckout(null);}},h('section',{role:'dialog','aria-modal':true,'aria-labelledby':'checkout-title',className:'checkout-modal',onKeyDown:trapFocus},h('button',{className:'modal-close icon-button','aria-label':'Close checkout',onClick:()=>setCheckout(null)},h(Icon,{name:'close',size:21})),h('span',{className:'checkout-icon'},h(Icon,{name:'lock',size:24})),h('div',{className:'eyebrow'},'Secure checkout'),h('h2',{id:'checkout-title'},'Where should your receipt go?'),h('p',null,'Keep this email and your payment reference to access your report credits.'),h('div',{className:'checkout-order'},h('span',null,checkout.product==='pack10'?'10 full reports':checkout.product==='pack3'?'3 full reports':'1 full report'),h('strong',null,'R'+checkout.amount/100)),h('form',{onSubmit:e=>{e.preventDefault();const opts=checkout;suppressOverlayFocus.current=true;setCheckout(null);startPay(opts);}},h('label',{htmlFor:'receipt-email'},'Email address'),h('input',{id:'receipt-email',type:'email',required:true,pattern:'[^ @]+@[^ @]+[.][^ @]+',title:'Enter a complete email address, such as you@example.com.',autoFocus:true,autoComplete:'email',inputMode:'email',value:payEmail,placeholder:'you@example.com',onChange:e=>setPayEmail(e.target.value)}),h('button',{type:'submit',className:'primary-button'},'Continue to Paystack',h(Icon,{name:'arrow',size:18}))),h('p',{className:'checkout-note'},h(Icon,{name:'shield',size:15}),'Card details are handled by Paystack.')))
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
