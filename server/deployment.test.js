@@ -21,6 +21,13 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
   assert.ok(a.body.issues.every(x=>x.recommendation===undefined&&x.impact===undefined));
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
+  const broken = new FormData();
+  broken.append('file', new Blob([Buffer.from('%PDF-1.4\nthis is deliberately corrupt')], {type:'application/pdf'}), 'broken.pdf');
+  broken.append('jurisdiction','ZA');
+  const brokenRes = await realFetch(base+'/api/analyze',{method:'POST',body:broken});
+  assert.equal(brokenRes.status,422);
+  const brokenBody = await brokenRes.json();
+  assert.match(brokenBody.error,/could not be read|damaged|password-protected/i);
   assert.equal((await post('/api/unlock-analysis',{analysisId:a.body._id,grantId:'credit',email:'buyer@example.test'})).status,402);
   store.durable=()=>true; // Allow the test Paystack verifier while retaining a temporary local ledger.
   const receipt={reference:'CC-deployment-test-receipt',email:'buyer@example.test',product:'single'};
