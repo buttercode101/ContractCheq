@@ -53,7 +53,7 @@ test('keyboard and motion accessibility invariants remain in the shipped UI',()=
  const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
  const css=fs.readFileSync(path.join(__dirname,'..','public','app.css'),'utf8');
  assert.match(html,/className:['"]skip-link['"]/);
- assert.match(html,/aria-live=/);
+ assert.match(html,/['"]aria-live['"]\s*:/);
  assert.match(css,/:focus-visible/);
  assert.match(css,/prefers-reduced-motion/);
 });
