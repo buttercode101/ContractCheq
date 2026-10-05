@@ -1,5 +1,4 @@
 name: ContractCheq Production CI
-# Registered on default branch so production-branch pushes are independently verified.
 
 on:
   push:
