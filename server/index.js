@@ -400,8 +400,9 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
     res.json(freeViewOf(analysis));
   } catch (err) {
     cleanup(file?.path);
-    console.error('analyze', err);
-    res.status(err.status || 422).json({ error: err.status ? err.message : 'This file could not be read. Try an unlocked PDF, plain text file or a clear photo.' });
+    const status = Number(err?.status) || 422;
+    if (status >= 500) console.error('analyze', err);
+    res.status(status).json({ error: err?.status ? err.message : 'This file could not be read. Try an unlocked PDF, plain text file or a clear photo.' });
   }
 });
 
