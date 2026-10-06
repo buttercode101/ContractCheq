@@ -24,7 +24,9 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal((await post('/api/analyze-text',{text:'   ',jurisdiction:'ZA'})).status,400);
   assert.equal((await post('/api/analyze-text',{text:'ordinary contract wording',jurisdiction:'XX'})).status,400);
   const ui=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
-  assert.ok(ui.includes("'/100 · '+d.level"),'Demo cards must derive their risk label from demo data');
+  assert.ok(ui.includes("fetch(API+'/api/demo/'"),'Demo cards must load current rule-engine output');
+  const demoRes=await realFetch(base+'/api/demo/lease'); const demo=await demoRes.json();
+  assert.equal(demoRes.status,200); assert.equal(demo.isDemo,true); assert.equal(demo.isPaid,true); assert.ok(demo.rulesVersion); assert.ok(demo.issuesCount>0);
   const broken = new FormData();
   broken.append('file', new Blob([Buffer.from('%PDF-1.4\nthis is deliberately corrupt')], {type:'application/pdf'}), 'broken.pdf');
   broken.append('jurisdiction','ZA');
