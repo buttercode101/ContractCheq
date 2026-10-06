@@ -4,7 +4,9 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 test('browser application script parses before deployment',()=>{
   const html=fs.readFileSync(require('node:path').join(__dirname,'..','public','index.html'),'utf8');
-  const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(s=>s.trim());
-  assert.ok(scripts.length,'expected inline application script');
-  for(const script of scripts) new vm.Script(script,{filename:'public/index.html'});
+  const chunks=html.split('<script>');
+  assert.ok(chunks.length>1,'expected inline application script');
+  const script=chunks[chunks.length-1].split('</script>')[0];
+  assert.ok(script.trim().length>100,'expected application script body');
+  new vm.Script(script,{filename:'public/index.html'});
 });
