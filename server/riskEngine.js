@@ -404,13 +404,15 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   const packVersion = isUK ? '1.1-uk-2026' : RULES_VERSION;
   const employment = /employment|employee|employer|salary|remuneration/i.test(text);
   const tenancy = /lease|tenancy|landlord|tenant/i.test(text);
+  const residentialTenancy = tenancy && /residential|dwelling|home\b|house\b|flat\b|apartment|housing purposes/i.test(`${fileName} ${text.slice(0,2500)}`);
   const found = [];
   const seen = new Set();
 
   for (const rule of pack) {
     if (seen.has(rule.id)) continue;
     if (['bcea','lra','uk-wtr'].includes(rule.id) && !employment) continue;
-    if (['rha-entry','rha-dep','uk-deposit-cap','uk-s21-trap'].includes(rule.id) && !tenancy) continue;
+    if (['rha-entry','rha-dep'].includes(rule.id) && !residentialTenancy) continue;
+    if (['uk-deposit-cap','uk-s21-trap'].includes(rule.id) && !tenancy) continue;
     if (['cpa-unfair','onesided'].includes(rule.id) && employment) continue;
     for (const pattern of rule.patterns) {
       // Examine every occurrence: a protective first clause must not mask a later waiver.
@@ -470,8 +472,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     found.push({id:id+'-'+found.length,law,lawRef:law,riskScore:rawScore+'/100',severity,excerpt:'Not found in the extracted contract text',analysis,recommendation,impact,tags,rawScore,source:'completeness'});
     seen.add(id);
   };
-  if(!isUK && tenancy){
-    if(!/(deposit).{0,180}(interest|interest-bearing)/is.test(text)) pushMissing('missing-deposit-interest','Rental Housing Act s5(3)(c)','MEDIUM RISK',62,'The scan found a residential lease but did not detect clear treatment of interest on the deposit.','Confirm where the deposit is held, the interest treatment, inspection process, permitted deductions and repayment timing.','Unclear deposit handling can make recovery harder at the end of the lease.',['RHA','Missing protection']);
+  if(!isUK && residentialTenancy){
+    if(!/(deposit).{0,180}(interest|interest-bearing)/is.test(text)) pushMissing('missing-deposit-interest','Rental Housing Act s5(3)(d)','MEDIUM RISK',62,'The scan found a residential lease but did not detect clear treatment of interest on the deposit.','Confirm where the deposit is held, the interest treatment, inspection process, permitted deductions and repayment timing.','Unclear deposit handling can make recovery harder at the end of the lease.',['RHA','Missing protection']);
     if(!/(inspection|joint inspection|defects list|inventory)/i.test(text)) pushMissing('missing-lease-inspection','Rental Housing Act s5','MEDIUM RISK',58,'No clear incoming/outgoing inspection process was detected.','Add a documented joint inspection and defects/inventory process with dates and evidence.','Without a clear record, deposit deductions and damage disputes are harder to resolve.',['RHA','Missing protection']);
   }
   if(!isUK && employment){
