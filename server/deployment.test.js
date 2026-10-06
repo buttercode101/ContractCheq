@@ -21,6 +21,10 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
   assert.ok(a.body.issues.every(x=>x.recommendation===undefined&&x.impact===undefined));
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
+  assert.equal((await post('/api/analyze-text',{text:'   ',jurisdiction:'ZA'})).status,400);
+  assert.equal((await post('/api/analyze-text',{text:'ordinary contract wording',jurisdiction:'XX'})).status,400);
+  const ui=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+  assert.ok(ui.includes("'/100 · '+d.level"),'Demo cards must derive their risk label from demo data');
   const broken = new FormData();
   broken.append('file', new Blob([Buffer.from('%PDF-1.4\nthis is deliberately corrupt')], {type:'application/pdf'}), 'broken.pdf');
   broken.append('jurisdiction','ZA');
@@ -44,4 +48,14 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);
   assert.equal((await post('/api/unlock-analysis',{...unlock,email:'other@example.test'})).status,403);
  } finally {global.fetch=realFetch;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
+});
+
+
+test('keyboard and motion accessibility invariants remain in the shipped UI',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+ const css=fs.readFileSync(path.join(__dirname,'..','public','app.css'),'utf8');
+ assert.match(html,/className:['"]skip-link['"]/);
+ assert.match(html,/['"]aria-live['"]\s*:/);
+ assert.match(css,/:focus-visible/);
+ assert.match(css,/prefers-reduced-motion/);
 });

@@ -42,8 +42,8 @@ const upload = multer({
   },
 });
 
-const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, standardHeaders: true });
-const payLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true });
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, standardHeaders: true, message:{error:'Too many scans. Please wait 15 minutes before trying again.'} });
+const payLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, message:{error:'Too many payment requests. Please wait 15 minutes before trying again.'} });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true });
 
 function cleanup(filePath) {
@@ -53,10 +53,11 @@ function cleanup(filePath) {
 }
 
 async function extractFromPdf(filePath) {
-  const graphics = require('@napi-rs/canvas');
-  globalThis.DOMMatrix ||= graphics.DOMMatrix;
-  globalThis.ImageData ||= graphics.ImageData;
-  globalThis.Path2D ||= graphics.Path2D;
+  // Keep PDF.js native Path2D compatible with its canvas renderer.
+  const graphics = require(require.resolve('@napi-rs/canvas', {paths:[path.dirname(require.resolve('pdf-parse'))]}));
+  globalThis.DOMMatrix = graphics.DOMMatrix;
+  globalThis.ImageData = graphics.ImageData;
+  globalThis.Path2D = graphics.Path2D;
   const { PDFParse } = require('pdf-parse');
   const parser = new PDFParse({data:fs.readFileSync(filePath)});
   try {
