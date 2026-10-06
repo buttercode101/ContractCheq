@@ -437,6 +437,7 @@ app.post('/api/unlock-analysis', payLimiter, async (req,res,next)=> {
     if(!existing||existing.email!==String(email||'').toLowerCase().trim()) return res.status(403).json({error:'Valid payment receipt and email required'});
     const grant=await store.useCredit(ref,analysisId);
     if(!grant) return res.status(402).json({error:'No report credits remaining'});
+    await store.track('unlock_success',{via:'payment'});
     res.json({...stored.full,isPaid:true,unlockedVia:'payment',credits:grant.remaining});
   } catch(e) {next(e);}
 });
