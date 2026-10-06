@@ -227,7 +227,6 @@ function App() {
             setResult(full);
             setCredits(full.credits||0);
             setUnlocked(u=>[...new Set([...u, result._id])]);
-            track('unlock_success',{via:'payment'});
           } else {
             setCredits(c=>Math.max(c, v.credits||0));
             setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
@@ -254,7 +253,6 @@ function App() {
       setResult(full);
       setCredits(full.credits||0);
       setUnlocked(u=>[...new Set([...u, result._id])]);
-      track('unlock_success',{via:'credit'});
       return;
     }
     beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single'});
