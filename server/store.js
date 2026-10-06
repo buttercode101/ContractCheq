@@ -60,7 +60,10 @@ async function useCredit(reference,analysisId) {
 async function track(name,props={}) {
   // Never persist document names, excerpts, email addresses, or receipt references in telemetry.
   const safe=Object.fromEntries(['jurisdiction','method','issues','score','product','amount','via'].filter(k=>k in props).map(k=>[k,props[k]]));
-  await writeObject(key('events',crypto.randomUUID()),{name,props:safe,at:Date.now()},null,true);
+  const event={name:String(name).slice(0,64),props:safe,at:Date.now()};
+  // Production-readable telemetry without exposing contract text, filenames, email or payment references.
+  console.info('[telemetry]', JSON.stringify(event));
+  await writeObject(key('events',crypto.randomUUID()),event,null,true);
 }
 async function metrics() { return {durable:durable()}; }
 async function cleanupExpired() {
