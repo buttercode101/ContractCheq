@@ -10,7 +10,7 @@ fs.writeFileSync(path.join(fn, 'index.js'), "module.exports = require('./server/
 fs.writeFileSync(path.join(fn, '.vc-config.json'), JSON.stringify({runtime:'nodejs24.x',handler:'index.js',launcherType:'Nodejs',maxDuration:60,regions:['cpt1']}));
 fs.cpSync(path.join(__dirname, 'public'), path.join(out, 'static'), {recursive:true});
 const vendor=path.join(out,'static','vendor'); fs.mkdirSync(vendor,{recursive:true});
-fs.copyFileSync(require.resolve('react/umd/react.production.min.js'),path.join(vendor,'react.production.min.js'));
-fs.copyFileSync(require.resolve('react-dom/umd/react-dom.production.min.js'),path.join(vendor,'react-dom.production.min.js'));
+fs.copyFileSync(path.join(path.dirname(require.resolve('react')),'umd','react.production.min.js'),path.join(vendor,'react.production.min.js'));
+fs.copyFileSync(path.join(path.dirname(require.resolve('react-dom')),'umd','react-dom.production.min.js'),path.join(vendor,'react-dom.production.min.js'));
 fs.writeFileSync(path.join(out, 'config.json'), JSON.stringify({version:3,routes:[{src:'/api/.*',dest:'/api/index'},{handle:'filesystem'},{src:'/.*',dest:'/index.html'}]}));
 console.log('Packaged application with PDF and OCR runtime assets.');
