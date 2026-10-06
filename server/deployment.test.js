@@ -15,7 +15,7 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
  global.fetch=(url,options)=>String(url).startsWith('https://api.paystack.co/')?Promise.resolve({ok:true,json:async()=>verified}):realFetch(url,options);
  const post=async(route,body)=>{const r=await realFetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,body:await r.json()};};
  try {
-  const input={text:'The landlord may enter the premises at any time without notice. The deposit is non-refundable.',jurisdiction:'ZA'};
+  const input={text:'RESIDENTIAL LEASE AGREEMENT. The landlord may enter the dwelling at any time without notice. The deposit is non-refundable.',jurisdiction:'ZA'};
   const a=await post('/api/analyze-text',input);const b=await post('/api/analyze-text',input);
   assert.equal(a.status,200);assert.equal(a.body.isPaid,false);assert.ok(a.body.issuesCount>0);
   assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
