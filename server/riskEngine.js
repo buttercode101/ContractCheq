@@ -165,7 +165,7 @@ const RULES = [
       'South African courts scrutinise restraints of trade for reasonableness in time, geography and scope. Perpetual confidentiality for non-trade-secret information and country-wide multi-year non-competes are frequently narrowed.',
     rec: 'Limit confidentiality duration for non-trade secrets; narrow restraint to reasonable time, area and activities.',
     impact: 'Restraint may be partially or wholly unenforceable.',
-  },,
+  },
   {
     id:'cpa-fixed-term',
     laws:['CPA s14','Consumer Protection Regulations reg 5'],
