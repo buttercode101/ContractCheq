@@ -278,13 +278,17 @@ function App() {
     y += 8;
     line('Score: ' + result.score + '/100 · ' + result.level + ' · ' + (result.jurisdiction || 'ZA'), 11);
     line(result.docTitle || '', 10);
-    line('DISCLAIMER: Preliminary triage only. Not legal advice. Consult a qualified attorney.', 8);
+    line('DISCLAIMER: Automated contract risk review and decision support. Not legal advice.', 8);
+    if(result.decision) line('BOTTOM LINE: '+result.decision, 11);
+    if(result.confidence) line('COVERAGE: '+result.confidence, 8);
+    if(result.exposure) line('MONEY AT STAKE: '+result.exposure, 9);
     y += 2;
     (result.issues || []).forEach(function(iss, i) {
       line((i + 1) + '. [' + (iss.severity || '') + '] ' + (iss.law || ''), 11);
       if (iss.excerpt) line('Excerpt: ' + iss.excerpt, 9);
       if (iss.analysis) line(iss.analysis, 9);
-      if (iss.recommendation) line('Ask attorney: ' + iss.recommendation, 9);
+      if (iss.recommendation) line('Recommended action: ' + iss.recommendation, 9);
+      if (iss.impact) line('Why you care: ' + iss.impact, 9);
       y += 2;
     });
     doc.save('ContractCheck-' + (result._id || 'report') + '.pdf');
@@ -339,15 +343,20 @@ function App() {
       h('div',{className:'report-summary'},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract'),
         h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated')))),h(Gauge,{score:result.score,level:result.level}),
         h('p',{className:'score-explainer'},'A higher score means more potential risk. This is an automated assessment, not a legal conclusion.'),
+        result.decision&&h('section',{className:'decision-brief'},h('div',{className:'eyebrow'},'Bottom line'),h('h2',null,result.decision),h('div',{className:'decision-grid'},
+          h('div',null,h('span',null,'Priority issues'),h('strong',null,String(result.criticalCount||0)+' critical/high')),
+          h('div',null,h('span',null,'Money at stake'),h('strong',null,result.exposure||'Not safely quantifiable')),
+          h('div',null,h('span',null,'Confidence'),h('strong',null,result.confidence||'Rule-based review'))),
+          result.priorities&&result.priorities.length>0&&h('div',{className:'priority-actions'},h('h3',null,'What to do before you sign'),result.priorities.map((p,i)=>h('div',{key:i,className:'priority-action'},h('span',null,String(i+1).padStart(2,'0')),h('div',null,h('strong',null,p.title),h('p',null,p.action))))))),
         result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
       !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
-      h('div',{className:'findings-heading'},h('h2',null,'What deserves a second look'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
+      h('div',{className:'findings-heading'},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
       h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
         h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),
         h('div',{className:'finding-body'},m.source==='groq'&&h('span',{className:'ai-tag'},'AI-suggested'),m.excerpt&&h('blockquote',null,h('span',{className:'content-label'},'From your contract'),h('p',null,m.excerpt)),
           m.locked?h('p',{className:'locked-copy'},h(Icon,{name:'lock',size:17}),'Unlock this report to read the analysis and recommendations.'):h(React.Fragment,null,
             h('div',{className:'analysis-copy'},h('h4',null,'Why it matters'),h('p',null,m.analysis)),
-            isUnlocked&&m.recommendation&&h('div',{className:'recommendation'},h('h4',null,'Discuss with a lawyer'),h('p',null,m.recommendation)),
+            isUnlocked&&m.recommendation&&h('div',{className:'recommendation'},h('h4',null,'Recommended action'),h('p',null,m.recommendation)),
             isUnlocked&&m.impact&&h('p',{className:'impact-copy'},h('strong',null,'Potential impact. '),m.impact),
             isUnlocked&&m.lawRef&&h('p',{className:'law-reference'},h(Icon,{name:'document',size:15}),m.lawRef))))),
         issues.length===0&&h('div',{className:'empty-findings'},h(Icon,{name:'document',size:26}),h('h3',null,'No flags found in this scan'),h('p',null,'The rule engine may not cover every clause. A qualified lawyer can help with important decisions.'))),
@@ -358,7 +367,7 @@ function App() {
   if(view==='pricing'){
     const plans=[
       {product:'free',label:'Free scan',price:'R0',sub:'A first look, without a commitment.',cta:'Upload a contract',features:['Your risk score and risk level','Analysis of the first 3 flags','SA or UK rules'],note:'No payment needed.'},
-      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Every flag and recommendation','Impact notes for flagged clauses','Downloadable PDF report'],note:'All full-report features included.',featured:true},
+      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Bottom-line sign / negotiate / stop guidance','Every risk + missing-protection check','Prioritized actions and negotiation points','Money-at-stake context where detectable','Downloadable decision-ready PDF'],note:'All full-report features included.',featured:true},
       {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
       {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
     ];
