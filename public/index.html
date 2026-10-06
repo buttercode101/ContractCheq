@@ -360,7 +360,7 @@ function App() {
   if(view==='pricing'){
     const plans=[
       {product:'free',label:'Free scan',price:'R0',sub:'A first look, without a commitment.',cta:'Upload a contract',features:['Your risk score and risk level','Analysis of the first 3 flags','SA or UK rules'],note:'No payment needed.'},
-      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Every flag and recommendation','Impact notes for flagged clauses','Downloadable PDF report'],note:'One full-report credit.',featured:true},
+      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Every flag and recommendation','Impact notes for flagged clauses','Downloadable PDF report'],note:'All full-report features included.',featured:true},
       {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
       {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
     ];
@@ -373,7 +373,7 @@ function App() {
         ['What do I get for free?','Your risk score, risk level, document type, and analysis of the first 3 flagged issues. You can also see the titles of remaining flags. Full recommendations, impact notes, and PDF export require an unlock.'],
         ['Is this legal advice?','No. ContractCheck provides automated risk triage. Results may be incomplete or incorrect. We do not draft or rewrite clauses, and we do not replace a qualified attorney.'],
         ['What happens if I add AI insights?','This optional setting sends document excerpts to AI providers. Extra AI-suggested flags are labelled in your report. Leave it off to use only the SA or UK rule engine.'],
-        ['What if a payment does not unlock my report?','Keep your Paystack reference and receipt email. Refunds are considered case by case where an unlock fails after successful payment. A support email has not been published yet.']
+        ['What if a payment does not unlock my report?','Keep your Paystack reference and receipt email. Refunds are considered case by case where an unlock fails after successful payment. Email buttercode101@gmail.com with your Paystack reference and receipt email so the payment can be traced.']
       ].map(x=>h('details',{key:x[0]},h('summary',null,x[0],h(Icon,{name:'chevron',size:18})),h('p',null,x[1])))));
   }
 
@@ -403,7 +403,7 @@ function App() {
     body = h('section', {className: 'document-page contact-page'},
       h('h1', {className: 'serif'}, 'Contact'),
       h('p', {className: 'document-copy'}, 'Support & payment issues'),
-      h('p', {className: 'document-copy'}, 'A support email has not been published yet. Keep your payment reference and receipt email if you experience an unlock problem.'),
+      h('p', {className: 'document-copy'}, 'Email buttercode101@gmail.com if a successful payment does not unlock your report. Keep your payment reference and receipt email so the payment can be traced.'),
       h('p', {className: 'document-copy'}, 'Include your Paystack reference for payment problems.'),
       h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
     );
