@@ -25,7 +25,7 @@ const RULES = [
   },
   {
     id: 'rha-dep',
-    laws: ['CPA s48 & s51', 'RHA s5(3)(c)'],
+    laws: ['RHA s5(3)(d), (g) & (i)', 'CPA s48 & s51'],
     severity: 'HIGH RISK',
     score: 85,
     tags: ['CPA', 'RHA'],
@@ -37,8 +37,8 @@ const RULES = [
     ],
     fb: 'Deposit non-refundable / no interest accrues.',
     analysis:
-      'The Consumer Protection Act prohibits excessively one-sided terms. Forfeiture despite landlord fault is unfair under CPA s48/s51. RHA requires the deposit in an interest-bearing account.',
-    rec: 'Ensure deposit is refundable subject only to reasonable proven damages. Request proof of interest-bearing account.',
+      'For residential leases, RHA s5(3)(d) requires the deposit to be invested in an interest-bearing account; s5(3)(g) limits deductions to amounts the tenant is liable for and requires the balance plus interest to be returned; s5(3)(i) requires the deposit plus interest to be refunded within seven days where nothing is owing. CPA unfair-term protections may also be relevant depending on applicability.',
+    rec: 'Require the deposit and accrued interest to be refundable subject only to lawful, evidenced deductions. Request written proof of the interest-bearing account and retain the joint inspection records.',
     impact: 'Risk of losing some or all of the deposit even when not at fault; the amount depends on the contract, rent and proven deductions.',
   },
   {
