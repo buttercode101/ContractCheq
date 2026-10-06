@@ -2,7 +2,7 @@
  * ContractCheck risk engine v3 — ZA + UK
  * Check & Flag Only. Not legal advice.
  */
-const RULES_VERSION = '3.1-sa-2026';
+const RULES_VERSION = '4.0-sa-2026';
 
 const RULES = [
   {
@@ -165,7 +165,137 @@ const RULES = [
       'South African courts scrutinise restraints of trade for reasonableness in time, geography and scope. Perpetual confidentiality for non-trade-secret information and country-wide multi-year non-competes are frequently narrowed.',
     rec: 'Limit confidentiality duration for non-trade secrets; narrow restraint to reasonable time, area and activities.',
     impact: 'Restraint may be partially or wholly unenforceable.',
+  },,
+  {
+    id:'cpa-fixed-term',
+    laws:['CPA s14','Consumer Protection Regulations reg 5'],
+    severity:'HIGH RISK', score:84, tags:['CPA','Cancellation'],
+    patterns:[/fixed[- ]term.{0,100}(no cancellation|cannot cancel|non[- ]cancellable)/i,/cancel.{0,50}(penalty|fee).{0,30}(all remaining|full remaining|100%)/i,/automatic(ally)? renew.{0,70}(without notice|no notice)/i],
+    fb:'Fixed-term cancellation or automatic-renewal term may materially restrict cancellation rights.',
+    analysis:'CPA section 14 can regulate expiry, cancellation and renewal of qualifying fixed-term consumer agreements. A blanket ban on cancellation, full-balance penalty or renewal mechanism without the required notice deserves urgent review.',
+    rec:'Check whether CPA section 14 applies. Ask for the cancellation mechanism, notice window and any penalty to be stated clearly and limited to a reasonable amount.',
+    impact:'You may face an avoidable cancellation charge or unwanted renewal. Quantify the maximum rand amount from the remaining term before signing.'
   },
+  {
+    id:'cpa-notice',
+    laws:['CPA s49','CPA s22'],
+    severity:'HIGH RISK', score:82, tags:['CPA','Disclosure'],
+    patterns:[/(indemnity|waiver|assumption of risk).{0,100}(deemed|automatically|by using|by entering)/i,/(risk|liability).{0,70}(fine print|terms and conditions apply)/i],
+    fb:'Risk, waiver or indemnity language may not be sufficiently prominent or explained.',
+    analysis:'CPA sections 49 and 22 require certain risk, indemnity and liability terms to be drawn to a consumer’s attention in conspicuous, plain language before agreement.',
+    rec:'Require the supplier to identify the exact waiver/indemnity, explain it before signature and obtain specific acknowledgement where required.',
+    impact:'A hidden or poorly disclosed risk term can create a dispute over enforceability and who bears a loss.'
+  },
+  {
+    id:'rha-deposit-process',
+    laws:['Rental Housing Act s5(3)(c)-(g)'],
+    severity:'MEDIUM RISK', score:74, tags:['RHA','Deposit'],
+    patterns:[/deposit.{0,90}(returned|refund).{0,30}(30|thirty|60|sixty)s+days/i,/deposit.{0,80}(administration fee|admin fee|cleaning fee).{0,40}(automatic|regardless|non[- ]refundable)/i,/tenant.{0,80}(waive|no right).{0,40}(inspection|joint inspection)/i],
+    fb:'Deposit return, deduction or inspection process may prejudice the tenant.',
+    analysis:'The Rental Housing Act regulates deposits, inspections, deductions and repayment. Automatic deductions or broad inspection waivers can undermine the statutory process.',
+    rec:'Require itemised, evidenced deductions; preserve joint inspection rights; and state the applicable repayment timeline and interest treatment.',
+    impact:'Potential loss or delay of the rental deposit and a dispute before the Rental Housing Tribunal.'
+  },
+  {
+    id:'employment-deductions',
+    laws:['BCEA s34'],
+    severity:'HIGH RISK', score:83, tags:['BCEA','Pay'],
+    patterns:[/deduct.{0,60}(any amount|at discretion|without consent|without notice)/i,/employee.{0,50}(liable|responsible).{0,40}(all losses|all damage).{0,40}(deduct|salary|wage)/i],
+    fb:'Broad salary deduction or employee-loss clause.',
+    analysis:'BCEA section 34 restricts deductions from remuneration. Broad advance consent for unspecified losses or employer-discretion deductions can be problematic.',
+    rec:'Limit deductions to amounts and circumstances permitted by law, with the required written agreement or lawful basis and a transparent calculation.',
+    impact:'Direct take-home-pay exposure. Identify the maximum possible deduction and whether the clause creates uncapped liability.'
+  },
+  {
+    id:'employment-leave',
+    laws:['BCEA ch 3'],
+    severity:'HIGH RISK', score:81, tags:['BCEA','Leave'],
+    patterns:[/no (annual|sick|family responsibility) leave/i,/(annual|sick) leave.{0,50}(waive|forfeit all|not entitled)/i],
+    fb:'Statutory leave appears excluded or broadly waived.',
+    analysis:'Minimum leave entitlements under the BCEA cannot simply be contracted away where the Act applies.',
+    rec:'Replace the waiver with leave terms that meet or exceed the applicable statutory minimum and explain accrual, approval and carry-over clearly.',
+    impact:'Lost paid leave and a potential employment dispute.'
+  },
+  {
+    id:'restraint',
+    laws:['Common law','Magna Alloys principle'],
+    severity:'HIGH RISK', score:80, tags:['Employment','Restraint'],
+    patterns:[/restraint of trade.{0,140}(24|36|48|60)s+months/i,/non[- ]compete.{0,100}(south africa|worldwide|anywhere).{0,100}(24|36|48|60)s+months/i,/restraint.{0,80}(all industries|any business|any employment)/i],
+    fb:'Restraint may be unusually broad in duration, geography or activity.',
+    analysis:'South African restraint clauses are generally enforceable unless unreasonable, with reasonableness assessed in context. Very broad geography, duration or activity can materially restrict future work.',
+    rec:'Identify the legitimate interest being protected, then narrow duration, territory, customers and prohibited activities to that interest.',
+    impact:'Could restrict your ability to work or trade after termination and create urgent litigation risk.'
+  },
+  {
+    id:'ip-assignment',
+    laws:['Copyright Act 98 of 1978','Common law'],
+    severity:'MEDIUM RISK', score:69, tags:['IP','Commercial'],
+    patterns:[/(assigns?|transfers?).{0,80}(all|any).{0,30}(intellectual property|copyright|inventions).{0,80}(before|pre-existing|prior)/i,/(intellectual property|copyright).{0,80}(in perpetuity|worldwide).{0,80}(all work|anything created)/i],
+    fb:'IP assignment may capture pre-existing or unrelated intellectual property.',
+    analysis:'An over-broad IP assignment can transfer valuable pre-existing materials, tools or future work beyond the intended project.',
+    rec:'Carve out background IP and unrelated work; define project deliverables; grant only the licence or assignment actually required.',
+    impact:'Potential permanent loss of ownership or reuse rights in valuable work product.'
+  },
+  {
+    id:'payment-acceleration',
+    laws:['CPA s48','Common law'],
+    severity:'MEDIUM RISK', score:72, tags:['Payment','Commercial'],
+    patterns:[/(all amounts|entire balance|full balance).{0,50}(immediately due|due and payable).{0,70}(breach|late|default)/i,/acceleration.{0,80}(entire|all|full).{0,30}(balance|fees|charges)/i],
+    fb:'A default may accelerate the full remaining balance.',
+    analysis:'Acceleration can turn a small breach into immediate liability for the entire remaining contract value and may be unfair in a consumer context depending on circumstances.',
+    rec:'Add a cure period, limit acceleration to material uncured breach, and calculate the maximum amount that could become immediately due.',
+    impact:'Potential immediate cash-flow exposure equal to the unpaid balance of the agreement.'
+  },
+  {
+    id:'penalty',
+    laws:['Conventional Penalties Act 15 of 1962','CPA s48'],
+    severity:'MEDIUM RISK', score:70, tags:['Penalty','Payment'],
+    patterns:[/(penalty|liquidated damages).{0,80}(per day|per week|per month|%|percent)/i,/(late fee|penalty fee).{0,60}(non[- ]refundable|in addition to all|without limit)/i],
+    fb:'Penalty or liquidated-damages clause could create disproportionate exposure.',
+    analysis:'Contractual penalties can be reduced by a court when disproportionate to prejudice suffered, and consumer terms may also be assessed for fairness.',
+    rec:'Ask for a cap, a cure period and a clear relationship between the charge and likely loss. Calculate the worst-case amount over a realistic breach period.',
+    impact:'Potential recurring rand liability that can compound quickly.'
+  },
+  {
+    id:'jurisdiction-arbitration',
+    laws:['Arbitration Act 42 of 1965','CPA s48'],
+    severity:'MEDIUM RISK', score:66, tags:['Disputes'],
+    patterns:[/(exclusive jurisdiction|submit to jurisdiction).{0,80}(foreign|england|united states|new york|london|singapore)/i,/arbitration.{0,100}(costs borne by|all costs).{0,50}(consumer|employee|tenant|you)/i],
+    fb:'Dispute clause may make enforcement expensive or impractical.',
+    analysis:'Forum, arbitration and cost-allocation clauses can materially change the practical cost of enforcing rights even where substantive rights remain.',
+    rec:'Prefer a practical South African forum for a South African transaction and balanced allocation of arbitration costs. Check mandatory statutory forums that cannot be excluded.',
+    impact:'Higher dispute costs, travel or procedural barriers if enforcement becomes necessary.'
+  },
+  {
+    id:'surety',
+    laws:['General Law Amendment Act 50 of 1956 s6','Common law'],
+    severity:'HIGH RISK', score:87, tags:['Surety','Personal liability'],
+    patterns:[/(surety|co[- ]principal debtor).{0,100}(unlimited|all amounts|any amounts|continuing)/i,/binds? (himself|herself|the signatory).{0,80}(surety|co[- ]principal debtor)/i],
+    fb:'The signatory may be accepting personal surety or co-principal-debtor liability.',
+    analysis:'A suretyship can expose a person to another party’s debt. Wording that also makes the surety a co-principal debtor can materially affect enforcement and defences.',
+    rec:'Do not treat this as boilerplate. Identify the secured debt, cap the amount and duration, specify release events, and obtain independent legal advice before accepting personal liability.',
+    impact:'Potential personal liability for another party’s debt, interest and enforcement costs.'
+  },
+  {
+    id:'guarantee-uncapped',
+    laws:['Common law','CPA s48 where applicable'],
+    severity:'HIGH RISK', score:85, tags:['Guarantee','Liability'],
+    patterns:[/(guarantee|indemnity).{0,100}(unlimited|uncapped|all losses|any loss|on demand)/i],
+    fb:'Guarantee or indemnity may create uncapped liability.',
+    analysis:'An uncapped guarantee or indemnity can shift losses far beyond the contract price and may survive termination.',
+    rec:'Cap liability, exclude indirect/consequential loss where appropriate, tie recovery to proven loss, and define a survival period.',
+    impact:'Potential liability can exceed the contract value; this deserves priority review before signature.'
+  },
+  {
+    id:'missing-governing-law',
+    laws:['Contract certainty / dispute planning'],
+    severity:'LOW RISK', score:42, tags:['Missing protection'],
+    patterns:[/THIS_PATTERN_IS_NEVER_MATCHED/],
+    fb:'No governing-law clause detected.',
+    analysis:'For cross-border or multi-jurisdiction agreements, silence on governing law can increase uncertainty and dispute cost.',
+    rec:'If the transaction has cross-border elements, add an appropriate governing-law and forum clause after legal review.',
+    impact:'Uncertainty about which legal system and forum will govern a dispute.'
+  }
 ];
 
 
@@ -332,6 +462,26 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   else if (/lease|tenancy|landlord|tenant/i.test(text)) docType = 'Lease / Tenancy';
 
 
+
+  // Contextual completeness checks: paid review must also identify important omissions.
+  const lower=text.toLowerCase();
+  const pushMissing=(id,law,severity,rawScore,analysis,recommendation,impact,tags)=>{
+    if(seen.has(id)) return;
+    found.push({id:id+'-'+found.length,law,lawRef:law,riskScore:rawScore+'/100',severity,excerpt:'Not found in the extracted contract text',analysis,recommendation,impact,tags,rawScore,source:'completeness'});
+    seen.add(id);
+  };
+  if(!isUK && tenancy){
+    if(!/(deposit).{0,180}(interest|interest-bearing)/is.test(text)) pushMissing('missing-deposit-interest','Rental Housing Act s5(3)(c)','MEDIUM RISK',62,'The scan found a residential lease but did not detect clear treatment of interest on the deposit.','Confirm where the deposit is held, the interest treatment, inspection process, permitted deductions and repayment timing.','Unclear deposit handling can make recovery harder at the end of the lease.',['RHA','Missing protection']);
+    if(!/(inspection|joint inspection|defects list|inventory)/i.test(text)) pushMissing('missing-lease-inspection','Rental Housing Act s5','MEDIUM RISK',58,'No clear incoming/outgoing inspection process was detected.','Add a documented joint inspection and defects/inventory process with dates and evidence.','Without a clear record, deposit deductions and damage disputes are harder to resolve.',['RHA','Missing protection']);
+  }
+  if(!isUK && employment){
+    if(!/(notice period|notice of termination|termination notice)/i.test(text)) pushMissing('missing-employment-notice','BCEA s37','MEDIUM RISK',57,'No clear termination notice provision was detected.','Confirm the lawful notice period, any probation interaction and the process for termination.','Unclear notice terms can create unexpected income or staffing exposure.',['BCEA','Missing protection']);
+    if(!/(annual leave|leave entitlement|leave days)/i.test(text)) pushMissing('missing-employment-leave','BCEA ch 3','MEDIUM RISK',55,'No clear annual-leave entitlement was detected.','State leave entitlement and administration clearly, subject to applicable statutory minimums.','Unclear leave rights create payroll and employment-dispute risk.',['BCEA','Missing protection']);
+  }
+  if(!/(governed by|governing law|laws of south africa|law of the republic)/i.test(lower) && /international|foreign|usd|gbp|eur|overseas/i.test(lower)){
+    pushMissing('missing-governing-law','Contract certainty / dispute planning','LOW RISK',42,'Cross-border indicators were found but no clear governing-law clause was detected.','Clarify governing law and dispute forum before signing.','A dispute may become more expensive and procedurally uncertain.',['Missing protection','Disputes']);
+  }
+
   let score = 18;
   if (found.length) {
     const avg = found.reduce((s, i) => s + i.rawScore, 0) / found.length;
@@ -342,7 +492,14 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   if (score >= 70) level = 'High Risk';
   else if (score >= 40) level = 'Medium Risk';
 
-  const exposure = 'Not estimated';
+  const money=[...text.matchAll(/(?:R|ZAR)\s?([0-9][0-9 ,.]{1,14})/gi)].map(m=>Number(m[1].replace(/[ ,]/g,''))).filter(Number.isFinite);
+  const maxMoney=money.length?Math.max(...money):null;
+  const severe=found.filter(x=>x.rawScore>=80).length;
+  const exposure=maxMoney && severe ? 'At least R'+maxMoney.toLocaleString('en-ZA')+' appears in the contract; exact exposure depends on which obligations apply.' : 'Not safely quantifiable from the extracted terms';
+  const critical=found.slice().sort((a,b)=>b.rawScore-a.rawScore).slice(0,3);
+  const decision=score>=70?'Do not sign unchanged until the high-risk items are resolved.':score>=40?'Negotiate the flagged items before signing.':'No major red flags were detected by this ruleset, but review the key commercial terms and omissions before signing.';
+  const priorities=critical.map(x=>({title:x.law,action:x.recommendation,severity:x.severity}));
+  const confidence=found.length?'Evidence-backed flags found in extracted text; completeness is limited by rule coverage and extraction quality.':'No rule match is not a legal clearance; this scan has limited coverage.';
   const coverageWarning = isUK
     ? 'Limited rule-based triage. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.'
     : 'Limited rule-based triage, not a complete legal review. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.';
@@ -352,6 +509,10 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     level,
     issuesCount: found.length,
     exposure,
+    decision,
+    priorities,
+    confidence,
+    criticalCount: severe,
     docTitle: fileName ? fileName.replace(/\.[^.]+$/, '') : `${docType} Agreement`,
     docType: `${docType} • analysed just now`,
     issues: found,
