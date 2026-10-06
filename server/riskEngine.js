@@ -501,8 +501,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   const priorities=critical.map(x=>({title:x.law,action:x.recommendation,severity:x.severity}));
   const confidence=found.length?'Evidence-backed flags found in extracted text; completeness is limited by rule coverage and extraction quality.':'No rule match is not a legal clearance; this scan has limited coverage.';
   const coverageWarning = isUK
-    ? 'Limited rule-based triage. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.'
-    : 'Limited rule-based triage, not a complete legal review. A low score is not a legal clearance. Financial exposure cannot be determined from this scan.';
+    ? 'Automated rule-based review. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Monetary amounts are context only unless the relevant obligation can be established.'
+    : 'Automated rule-based review, not a complete legal opinion. A low score is not a legal clearance. Rand amounts are surfaced as context only; exact legal exposure is not inferred without sufficient contract evidence.';
 
   return {
     score,
