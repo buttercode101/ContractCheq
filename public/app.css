@@ -40,3 +40,14 @@ body{background:radial-gradient(circle at 78% 4%,rgba(15,98,77,.045),transparent
 @media(min-width:1600px){.hero-grid{padding-top:108px;padding-bottom:88px}.hero-title{font-size:102px}}
 @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:42px;padding-top:54px}.hero-intro{max-width:660px}.hero-title{font-size:76px}.upload-panel{max-width:660px}.page-intro{margin-top:52px}}
 @media(max-width:640px){body{background:var(--paper)}.app-shell,.header-inner{padding-left:18px;padding-right:18px}.header-inner{height:68px}.site-header{background:rgba(244,246,241,.94)}.hero-grid{padding:38px 0 38px;gap:28px}.hero-title{font-size:54px;line-height:.98;letter-spacing:-1.8px;margin:18px 0 20px}.hero-copy{font-size:15px;line-height:1.72}.hero-proof{margin-top:20px;gap:7px}.hero-proof span{padding:7px 9px;font-size:11px}.hero-caption{margin-top:12px}.upload-panel{padding:7px;border-radius:22px}.upload-panel>.panel-heading,.upload-panel>.field-label,.upload-panel>.country-switch,.upload-panel>.ai-option,.upload-panel>.upload-foot{margin-left:13px;margin-right:13px}.panel-heading{padding-top:13px;margin-bottom:19px}.panel-heading h2{font-size:21px}.drop-area{border-radius:16px;padding:25px 16px;min-height:0}.drop-title{font-size:14px}.upload-label{margin-top:17px}.how-section{padding:25px 0}.examples-section{padding:46px 0 34px}.section-heading h2{font-size:29px}.example-card{border-radius:16px;padding:20px}.price-strip{padding:29px 24px;border-radius:19px}.price-strip h2{font-size:34px}.page-intro{margin-top:38px}.page-intro h1{font-size:46px;letter-spacing:-1.3px}.plan-card{border-radius:17px}.report-content{padding-top:18px}.report-summary{padding:24px 20px;border-radius:18px}.report-title-block h1{font-size:25px}.finding-card{border-radius:16px}.finding-header{padding:19px}.finding-body{padding:22px 19px}.checkout-modal{border-radius:21px}}
+
+
+/* ContractCheq mobile upload controls hardening — keep jurisdiction and AI disclosure in independent rows. */
+@media(max-width:480px){
+  .upload-panel>.country-switch,.upload-panel>.ai-option{width:auto;max-width:100%;box-sizing:border-box;clear:both}
+  .country-switch{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+  .country-switch button{white-space:normal;overflow-wrap:anywhere;min-height:48px}
+  .ai-option{position:relative;display:grid;grid-template-columns:18px minmax(0,1fr);align-items:start;column-gap:11px;margin-top:18px}
+  .ai-option input{grid-column:1}.ai-option>span{grid-column:2;min-width:0}
+  .ai-option strong,.ai-disclosure{white-space:normal;overflow-wrap:anywhere}
+}
