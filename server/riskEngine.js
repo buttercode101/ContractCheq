@@ -8,7 +8,7 @@ const RULES = [
   {
     id: 'rha-entry',
     laws: ['Rental Housing Regulations reg 9', 'Constitution s14'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 90,
     tags: ['RHA', 'Constitution'],
     patterns: [
@@ -26,7 +26,7 @@ const RULES = [
   {
     id: 'rha-dep',
     laws: ['CPA s48 & s51', 'RHA s5(3)(c)'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 85,
     tags: ['CPA', 'RHA'],
     patterns: [
@@ -44,7 +44,7 @@ const RULES = [
   {
     id: 'popia',
     laws: ['POPIA s11 & s18', 'POPIA s8'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 88,
     tags: ['POPIA'],
     patterns: [
@@ -62,7 +62,7 @@ const RULES = [
   {
     id: 'bcea',
     laws: ['BCEA s9 & s10', 'BCEA s14'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 82,
     tags: ['BCEA', 'LRA'],
     patterns: [
@@ -173,7 +173,7 @@ const UK_RULES = [
   {
     id: 'uk-deposit-cap',
     laws: ['Tenant Fees Act 2019', 'Housing Act 2004'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 88,
     tags: ['UK', 'Tenancy'],
     patterns: [
@@ -206,7 +206,7 @@ const UK_RULES = [
   {
     id: 'uk-wtr',
     laws: ['Working Time Regulations 1998', 'Employment Rights Act 1996'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 84,
     tags: ['UK', 'Employment'],
     patterns: [
@@ -222,7 +222,7 @@ const UK_RULES = [
   {
     id: 'uk-unfair',
     laws: ['Consumer Rights Act 2015', 'Unfair Contract Terms Act 1977'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 86,
     tags: ['UK', 'Consumer'],
     patterns: [
@@ -238,7 +238,7 @@ const UK_RULES = [
   {
     id: 'uk-gdpr',
     laws: ['UK GDPR', 'Data Protection Act 2018'],
-    severity: 'HIGH THREAT',
+    severity: 'HIGH RISK',
     score: 85,
     tags: ['UK', 'Privacy'],
     patterns: [
