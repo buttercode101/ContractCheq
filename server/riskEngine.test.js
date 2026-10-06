@@ -8,3 +8,9 @@ test('sale title outranks incidental rental references',()=>{assert.match(analys
 test('paid decision brief includes prioritized action and confidence',()=>{const r=analyseContract('RESIDENTIAL LEASE. Rent R8000. The deposit is non-refundable. Landlord may enter the premises without notice.','lease.pdf','ZA');assert.match(r.decision,/Do not sign|Negotiate/);assert.ok(r.priorities.length>0);assert.ok(r.confidence);assert.notEqual(r.exposure,'Not estimated');});
 test('surety is treated as a high-priority personal liability risk',()=>{const r=analyseContract('SERVICE AGREEMENT. The director binds himself as surety and co-principal debtor for all amounts on a continuing unlimited basis.','service.pdf','ZA');assert.ok(r.issues.some(x=>x.id.startsWith('surety-')));});
 test('lease completeness flags missing inspection process',()=>{const r=analyseContract('RESIDENTIAL LEASE. Monthly rent R9000. Deposit will be held in an interest-bearing account.','lease.pdf','ZA');assert.ok(r.issues.some(x=>x.id.startsWith('missing-lease-inspection-')));});
+
+
+test('commercial lease does not receive residential Rental Housing Act findings',()=>{
+ const r=analyseContract('COMMERCIAL LEASE AGREEMENT for retail shop premises. A security deposit is payable and access arrangements apply.','shop-lease.txt','ZA');
+ assert.ok(!r.issues.some(x=>String(x.lawRef||x.law).includes('Rental Housing Act')));
+});
