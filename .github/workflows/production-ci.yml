@@ -2,9 +2,9 @@ name: ContractCheq Production CI
 
 on:
   push:
-    branches: ["deployment/contractcheck-sa-v3"]
+    branches: ["main"]
   pull_request:
-    branches: ["deployment/contractcheck-sa-v3"]
+    branches: ["main"]
 
 permissions:
   contents: read
