@@ -11,6 +11,7 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 const { analyseContract } = require('./riskEngine');
+const DEMO_SAMPLES = require('./demoSamples');
 const store = require('./store');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -310,6 +311,19 @@ app.get('/api/health', (_req, res) => {
     groq: Boolean(process.env.GROQ_API_KEY),
     tinyfish: Boolean(process.env.TINYFISH_API_KEY),
   });
+});
+
+app.get('/api/demo/:key', (req,res) => {
+  const sample=DEMO_SAMPLES[req.params.key];
+  if(!sample) return res.status(404).json({error:'Example not found'});
+  const analysis=analyseContract(sample.text,sample.fileName,sample.jurisdiction);
+  analysis.docTitle=sample.title;
+  analysis._id='demo-'+req.params.key;
+  analysis.isDemo=true;
+  analysis.isPaid=true;
+  analysis.freePreview=false;
+  analysis.extraction={method:'current-rule-engine-demo',pages:1,confidence:1};
+  res.json(analysis);
 });
 
 app.get('/api/config', (_req, res) => {
