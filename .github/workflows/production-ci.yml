@@ -1,4 +1,5 @@
 name: ContractCheq Production CI
+# Canonical release gate: main must pass before production promotion.
 
 on:
   push:
