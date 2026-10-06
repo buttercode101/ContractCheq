@@ -131,14 +131,12 @@ function App() {
   var isUnlocked = result && (result.isPaid || result.isDemo || (unlocked.indexOf(result._id) >= 0));
 
   var openDemo = useCallback(function(key) {
-    var d = DEMOS[key];
-    if (!d) return;
     setError('');
-    setJurisdiction(d.jurisdiction || 'ZA');
-    setResult(d);
-    setView('result');
-    track('demo_open', {id: key});
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    fetch(API+'/api/demo/'+encodeURIComponent(key)).then(function(r){return r.json().then(function(data){return {r:r,data:data};});}).then(function(x){
+      if(!x.r.ok) throw new Error(x.data.error||'Example unavailable');
+      setJurisdiction(x.data.jurisdiction||'ZA'); setResult(x.data); setView('result');
+      track('demo_open',{id:key,rulesVersion:x.data.rulesVersion}); window.scrollTo({top:0,behavior:'smooth'});
+    }).catch(function(e){setError('Could not load the current example report: '+e.message);});
   }, []);
 
   var runFile = useCallback(function(file) {
@@ -301,7 +299,7 @@ function App() {
     return h('button',{type:'button',onClick:()=>openDemo(key),className:'example-card','aria-label':'Explore '+title+' example report'},
       h('div',{className:'example-top'},h('span',{className:'example-icon'},h(Icon,{name:key==='employment'?'briefcase':'document',size:22})),h('span',{className:'example-region'},d.jurisdiction==='UK'?'UK':'South Africa')),
       h('h3',null,title),h('p',null,blurb),
-      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,d.score),h('span',null,'/100 · '+d.level)),h(Icon,{name:'arrow'})),
+      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,'Live'),h('span',null,' current rule-engine report')),h(Icon,{name:'arrow'})),
       h('span',{className:'example-link'},'Explore report'));
   }
   let body;
@@ -339,7 +337,7 @@ function App() {
     body=h('section',{className:'report-content'},
       h('div',{className:'report-toolbar'},h('button',{className:'text-button',onClick:()=>go('landing')},h(Icon,{name:'back',size:18}),'New scan'),h('span',{className:'rule-label'},region+' rule pack'),
         isUnlocked?h('button',{onClick:exportPdf,className:'primary-button'},h(Icon,{name:'download',size:17}),'Export PDF'):h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},h(Icon,{name:'lock',size:16}),unlocking?'Unlocking…':credits>0?'Use a credit':'Full report · R19')),
-      result.isDemo&&h('div',{className:'example-banner'},h(Icon,{name:'document',size:19}),h('p',null,h('strong',null,'Example report. '),'A snapshot of our published sample. Upload the sample to verify the score and flags.')),
+      result.isDemo&&h('div',{className:'example-banner'},h(Icon,{name:'document',size:19}),h('p',null,h('strong',null,'Example report. '),'Generated now by the same rule engine used for uploaded contracts. Download the sample below if you want to verify it yourself.')),
       h('div',{className:'report-summary'},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract'),
         h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated')))),h(Gauge,{score:result.score,level:result.level}),
         h('p',{className:'score-explainer'},'A higher score means more potential risk. This is an automated assessment, not a legal conclusion.'),
