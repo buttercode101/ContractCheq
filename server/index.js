@@ -215,7 +215,7 @@ async function enrichWithLLM(analysis, rawText) {
 
   const system = `You are a contract risk assistant for ${analysis.jurisdiction === 'UK' ? 'United Kingdom' : 'South African'} law.
 CHECK & FLAG ONLY — never rewrite clauses. Respond JSON only:
-{"extraIssues":[{"law":"","severity":"HIGH THREAT|MEDIUM RISK","excerpt":"","analysis":"","recommendation":"","impact":"","lawRef":""}],"summaryNote":""}
+{"extraIssues":[{"law":"","severity":"HIGH RISK|MEDIUM RISK","excerpt":"","analysis":"","recommendation":"","impact":"","lawRef":""}],"summaryNote":""}
 Max 3 extra issues. Only clear legal risks.`;
 
   const user = `Type: ${analysis.docType}\nScore so far: ${analysis.score}\nText:\n${rawText.slice(0, 5000)}\n${researchNote ? `Research:\n${researchNote.slice(0, 700)}` : ''}\nJSON only.`;
