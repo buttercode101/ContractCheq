@@ -8,11 +8,11 @@ const {analyseContract}=require('./riskEngine');
 
 // Retain real application hook state and execute the shipped frontend handlers.
 // Deferred requests may ignore abort, so stale-response guards are tested too.
-function browserJourney(fetchImpl,initial={}) {
+function browserJourney(fetchImpl,initial={},saved={}) {
  const script=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8').split('<script>').at(-1).split('</script>')[0];
  const state=[],refs=[];let stateIndex=0,refIndex=0,root;
  const location={pathname:'/'};
- const context={React:{...React,useState(value){const i=stateIndex++;if(!(i in state))state[i]=Object.hasOwn(initial,i)?initial[i]:typeof value==='function'?value():value;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(value){const i=refIndex++;return refs[i]||(refs[i]={current:value});},useCallback:fn=>fn,useEffect(){}},ReactDOM:{createRoot:()=>({render:element=>{root=element;}})},document:{getElementById:()=>({}),activeElement:null},window:{location,history:{pushState(_s,_t,url){location.pathname=url;}},scrollTo(){}},localStorage:{getItem:()=>null,setItem(){}},fetch:fetchImpl,AbortController,FormData,console,setTimeout,clearTimeout,crypto:require('node:crypto').webcrypto};
+ const context={React:{...React,useState(value){const i=stateIndex++;if(!(i in state))state[i]=Object.hasOwn(initial,i)?initial[i]:typeof value==='function'?value():value;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(value){const i=refIndex++;return refs[i]||(refs[i]={current:value});},useCallback:fn=>fn,useEffect(){}},ReactDOM:{createRoot:()=>({render:element=>{root=element;}})},document:{getElementById:()=>({}),activeElement:null},window:{location,history:{pushState(_s,_t,url){location.pathname=url;}},scrollTo(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(_key,value){saved=JSON.parse(value);}},fetch:fetchImpl,AbortController,FormData,console,setTimeout,clearTimeout,crypto:require('node:crypto').webcrypto};
  vm.createContext(context);vm.runInContext(script,context);
  function render(){stateIndex=0;refIndex=0;return root.type();}
  function find(predicate,node){if(arguments.length===1)node=render();if(!node||typeof node!=='object')return;if(Array.isArray(node))return node.map(n=>find(predicate,n)).find(Boolean);if(predicate(node))return node;return find(predicate,node.props?.children);}
@@ -21,6 +21,15 @@ function browserJourney(fetchImpl,initial={}) {
  return {state,render,find,button,upload,context};
 }
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
+test('saved paid-report reopen cannot spend a new credit or override later navigation',async()=>{
+ const network=deferredFetch(),saved={lastPaidReport:{analysisId:'previous-report',reference:'previous-receipt',email:'buyer@example.test'}};
+ const ui=browserJourney(network.fetch,{},saved);
+ const pending=ui.button('Reopen last unlocked report').props.onClick();
+ assert.deepEqual(JSON.parse(network.requests[0].options.body),{...saved.lastPaidReport,reopenOnly:true});
+ ui.button('Pricing').props.onClick();assert.equal(network.requests[0].options.signal.aborted,true);
+ network.requests[0].resolve({ok:true,json:async()=>({_id:'previous-report',isPaid:true,credits:0})});await pending;await settle();
+ assert.equal(ui.state[1],'pricing');assert.equal(ui.state[15],null);
+});
 const response=name=>({ok:true,json:async()=>({...analyseContract('EMPLOYMENT AGREEMENT. The employee shall work 55 hours per week.',name),_id:name,isPaid:false,freePreview:true})});
 function deferredFetch(){const requests=[];return {requests,fetch(url,options){if(url==='/api/events')return Promise.resolve({ok:true,json:async()=>({})});return new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}));}};}
 
