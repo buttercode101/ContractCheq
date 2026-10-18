@@ -332,7 +332,12 @@ async function verifyPaystack(reference) {
     headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` }, signal: AbortSignal.timeout(10000),
   });
   const body = await res.json();
-  if (!res.ok || !body.status) throw new Error(body.message || 'Paystack verify failed');
+  if (!res.ok || !body.status) {
+    if ([400,404].includes(res.status) && /^Transaction reference not found\.?$/i.test(String(body.message||''))) {
+      throw Object.assign(new Error('Payment reference was not found. Check the reference on your Paystack receipt and try again.'),{status:404});
+    }
+    throw Object.assign(new Error('Payment verification is temporarily unavailable. Please try again.'),{status:502});
+  }
   return body;
 }
 
