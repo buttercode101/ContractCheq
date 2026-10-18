@@ -265,11 +265,14 @@ function App() {
     var y = 16;
     function line(t, s) {
       s = s || 11;
-      var lines = doc.splitTextToSize(t, 180);
       doc.setFontSize(s);
-      doc.text(lines, 14, y);
-      y += lines.length * (s * 0.45) + 4;
-      if (y > 280) { doc.addPage(); y = 16; }
+      var lines = doc.splitTextToSize(t, 180);
+      lines.forEach(function(text) {
+        if (y + s * 0.45 > 280) { doc.addPage(); y = 16; }
+        doc.text(text, 14, y);
+        y += s * 0.45;
+      });
+      y += 4;
     }
     doc.setFontSize(16);
     doc.text('ContractCheck Report', 14, y);
@@ -345,7 +348,7 @@ function App() {
           h('div',null,h('span',null,'Priority issues'),h('strong',null,String(result.criticalCount||0)+' critical/high')),
           h('div',null,h('span',null,'Money at stake'),h('strong',null,result.exposure||'Not safely quantifiable')),
           h('div',null,h('span',null,'Confidence'),h('strong',null,result.confidence||'Rule-based review'))),
-          result.priorities&&result.priorities.length>0&&h('div',{className:'priority-actions'},h('h3',null,'What to do before you sign'),result.priorities.map((p,i)=>h('div',{key:i,className:'priority-action'},h('span',null,String(i+1).padStart(2,'0')),h('div',null,h('strong',null,p.title),h('p',null,p.action))))))),
+          result.priorities&&result.priorities.length>0&&h('div',{className:'priority-actions'},h('h3',null,'What to do before you sign'),result.priorities.map((p,i)=>h('div',{key:i,className:'priority-action'},h('span',null,String(i+1).padStart(2,'0')),h('div',null,h('strong',null,p.title),h('p',null,p.action)))))),
         result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
       !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
       h('div',{className:'findings-heading'},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
@@ -360,7 +363,7 @@ function App() {
         issues.length===0&&h('div',{className:'empty-findings'},h(Icon,{name:'document',size:26}),h('h3',null,'No flags found in this scan'),h('p',null,'The rule engine may not cover every clause. A qualified lawyer can help with important decisions.'))),
       (result.level==='High Risk'||result.score>=70)&&h('aside',{className:'legal-guidance'},h('div',{className:'guidance-icon'},h(Icon,{name:'shield',size:24})),h('div',null,h('h2',null,'A second opinion is a good next step.'),h('p',null,'This document has high-risk flags. Speak to a qualified lawyer before you sign.'),h('div',{className:'guidance-links'},h('a',{href:region==='UK'?'https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/find-a-solicitor':'https://www.lssa.org.za/',target:'_blank',rel:'noopener noreferrer',onClick:()=>track('attorney_referral_click',{jurisdiction:result.jurisdiction,score:result.score})},region==='UK'?'Find a UK solicitor':'Find an SA attorney',h(Icon,{name:'external',size:16})),h('a',{href:region==='UK'?'https://www.citizensadvice.org.uk/':'https://www.legal-aid.co.za/',target:'_blank',rel:'noopener noreferrer'},region==='UK'?'Citizens Advice':'Legal Aid SA',h(Icon,{name:'external',size:16}))))),
       h('section',{className:'notes-card'},h('div',{className:'notes-heading'},h('div',null,h('h2',null,'Your notes'),h('p',null,storageError?'Browser storage is unavailable. Copy your notes before leaving.':'Saved on this device. Add questions to take to your lawyer.')),h(Icon,{name:'note',size:23})),h('label',{htmlFor:'private-notes',className:'sr-only'},'Private notes for this report'),h('textarea',{id:'private-notes',placeholder:'Questions to ask, clauses to discuss…',value:notes[result._id]||'',onChange:e=>{const v=e.target.value;setNotes(n=>({...n,[result._id]:v}));}})),
-      h('div',{className:'report-footnote'},h('p',null,'Check & flag only. We do not give legal advice or rewrite clauses.'),h('details',null,h('summary',null,'Report details',h(Icon,{name:'chevron',size:15})),h('p',null,'Rule version: '+(result.rulesVersion||'Not supplied'))));
+      h('div',{className:'report-footnote'},h('p',null,'Check & flag only. We do not give legal advice or rewrite clauses.'),h('details',null,h('summary',null,'Report details',h(Icon,{name:'chevron',size:15})),h('p',null,'Rule version: '+(result.rulesVersion||'Not supplied')))));
   }
   if(view==='pricing'){
     const plans=[

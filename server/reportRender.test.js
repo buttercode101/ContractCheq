@@ -1,0 +1,84 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const { analyseContract } = require('./riskEngine');
+
+// Render the shipped inline application with a selected report state. This catches
+// valid JavaScript that accidentally constructs findings outside the returned tree.
+function reportTree(result, windowExtras = {}) {
+  const script = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8')
+    .split('<script>').at(-1).split('</script>')[0];
+  let stateIndex = 0, root;
+  const context = {
+    React: { ...React,
+      useState(initial) {
+        const index = stateIndex++;
+        const value = index === 0 ? {} : index === 1 ? 'result' : index === 3 ? 'online'
+          : index === 15 ? result : typeof initial === 'function' ? initial() : initial;
+        return [value, () => {}];
+      },
+      useEffect() {}, useCallback: callback => callback, useRef: value => ({ current: value }),
+    },
+    ReactDOM: { createRoot: () => ({ render: element => { root = element; } }) },
+    document: { getElementById: () => ({}) },
+    window: { location: { pathname: '/' }, ...windowExtras },
+    localStorage: { getItem: () => null },
+    fetch: () => Promise.resolve({ json: async () => ({}) }),
+    console,
+  };
+  vm.createContext(context);
+  vm.runInContext(script, context);
+  return root.type();
+}
+
+const specimen = () => ({ ...analyseContract(
+  'RESIDENTIAL LEASE. The landlord may enter the dwelling without notice. The deposit is non-refundable.',
+  'render-fixture.pdf', 'ZA'), _id: 'render-fixture' });
+
+test('free report renders findings, notes, details and unlock controls', () => {
+  const full = specimen();
+  const result = { ...full, isPaid: false, decision: undefined, priorities: undefined,
+    issues: full.issues.slice(0, 3).map(({ recommendation, impact, ...issue }) => issue) };
+  const html = renderToStaticMarkup(reportTree(result));
+  for (const required of ['findings-list', 'Why it matters', 'notes-card', 'Rule version:', 'Unlock report'])
+    assert.ok(html.includes(required), `missing free report content: ${required}`);
+  assert.ok(!html.includes('Recommended action'));
+  assert.ok(!html.includes('Export PDF'));
+});
+
+test('paid report renders every finding, recommendation, impact and PDF action', () => {
+  const result = { ...specimen(), isPaid: true };
+  const html = renderToStaticMarkup(reportTree(result));
+  assert.equal((html.match(/class="finding-card/g) || []).length, result.issues.length);
+  for (const required of ['Recommended action', 'Potential impact.', 'Export PDF', 'What to do before you sign', 'notes-card'])
+    assert.ok(html.includes(required), `missing paid report content: ${required}`);
+  assert.ok(!html.includes('Unlock report'));
+});
+
+test('PDF export paginates long findings before writing outside the page', () => {
+  const result = { ...specimen(), isPaid: true };
+  result.issues[0].analysis = 'Long paragraph '.repeat(3000);
+  let pages = 1, saved = false, writes = 0;
+  class PDF {
+    setFontSize() {}
+    splitTextToSize(text) { return String(text).match(/.{1,90}/g) || ['']; }
+    text(text, x, y) { assert.ok(y >= 16 && y <= 280, `text outside page: ${y}`); writes++; }
+    addPage() { pages++; }
+    save() { saved = true; }
+  }
+  const tree = reportTree(result, { jspdf: { jsPDF: PDF } });
+  function find(node) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) return node.map(find).find(Boolean);
+    if (node.type === 'button' && JSON.stringify(node.props.children).includes('Export PDF')) return node;
+    return find(node.props?.children);
+  }
+  const button = find(tree);
+  assert.ok(button, 'export button must exist');
+  button.props.onClick();
+  assert.ok(saved && pages > 1 && writes > 100);
+});

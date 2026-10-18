@@ -268,6 +268,8 @@ Max 3 extra issues. Only clear legal risks.`;
 function freeViewOf(analysis) {
   return {
     ...analysis,
+    decision: undefined,
+    priorities: undefined,
     issues: analysis.issues.slice(0, 3).map(({recommendation,impact,...preview}) => preview),
     exposure: undefined,
     highlightedClauses: undefined,

@@ -9,5 +9,5 @@
       "schedule": "0 2 * * *"
     }
   ],
-  "buildCommand": "node build-vercel.js"
+  "buildCommand": "npm test && node build-vercel.js"
 }
