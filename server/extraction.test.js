@@ -1,4 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+for (const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN']) delete process.env[key];
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-extraction-'));
 const app=require('./index');
 test('vector graphics and scanned text share the PDF renderer canvas constructors',async()=>{
