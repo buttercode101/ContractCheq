@@ -82,7 +82,7 @@ function PlainLanguageGuide({guide}) {
     h('div',{className:'eyebrow'},'Included in every paid report'),
     h('h2',{id:'plain-guide-title'},'Your contract, in everyday language'),
     h('p',{className:'guide-intro'},guide.overview),
-    h('p',{className:'guide-coverage'},guide.coverage.includedSections+' of '+guide.coverage.totalSections+' extracted text sections included. '+guide.coverage.needsReview+' need closer reading.'),
+    h('p',{className:'guide-coverage'},guide.coverage.includedSections+' of '+guide.coverage.totalSections+' extracted text sections included. '+guide.coverage.needsReview+(guide.coverage.needsReview===1?' needs':' need')+' closer reading.'),
     guide.coverage.limited&&h('p',{role:'status',className:'extraction-warning'},'Guide limit reached: only the first 400 text sections are included. Read the remaining agreement separately.'),
     h('div',{className:'guide-facts'},[['Money mentioned',amounts],['Dates and time periods',timings]].map(([label,items])=>h('div',{key:label},h('h3',null,label),items.length?h('ul',null,items.slice(0,8).map((item,i)=>h('li',{key:i},h('strong',null,item.value),h('span',null,item.source))),items.length>8&&h('li',null,'More appear in the section guide below.')):h('p',null,'No matching wording recognised. Check the original agreement.')))),
     h('details',{className:'guide-checklist'},h('summary',null,'Things to confirm before agreeing'),h('ul',null,guide.checklist.map(item=>h('li',{key:item.title},h('strong',null,item.title+' — '+(item.found?'wording recognised':'check the agreement')),h('p',null,item.note))))),

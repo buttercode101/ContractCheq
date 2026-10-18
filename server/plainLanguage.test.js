@@ -62,6 +62,9 @@ test('does not attach property-entry advice to a tenant payment sentence', () =>
   const guide = buildPlainLanguageGuide('The tenant shall pay R8000 monthly. The employee shall keep information confidential.');
   assert.ok(!guide.sections[0].topics.includes('property'));
   assert.ok(!guide.sections[1].topics.includes('work'));
+  const entry = buildPlainLanguageGuide('The landlord may enter the premises without notice. The processor may access personal data.');
+  assert.ok(!entry.sections[0].topics.includes('ending'));
+  assert.ok(!entry.sections[1].topics.includes('property'));
 });
 
 test('document headings are identified without inventing operative obligations', () => {
