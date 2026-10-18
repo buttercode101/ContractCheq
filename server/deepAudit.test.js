@@ -75,6 +75,20 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
    assert.equal((await post('/api/unlock-analysis',{...unlock,reopenOnly:true})).status,404);
    assert.equal((await store.getGrant(receipt.reference)).remaining,0);
   });
+  await t.test('missing receipt is actionable while provider failures stay private and retryable',async()=>{
+   const providerFetch=global.fetch;
+   try {
+    for(const status of [400,404]){
+     global.fetch=async()=>({ok:false,status,json:async()=>({status:false,message:'Transaction reference not found.'})});
+     const missing=await post('/api/verify-payment',receipt);
+     assert.equal(missing.status,404);assert.match(missing.body.error,/Check the reference on your Paystack receipt/);assert.equal(missing.body.reports,undefined);
+    }
+    global.fetch=async()=>({ok:false,status:401,json:async()=>({status:false,message:'Provider secret detail'})});
+    const unavailable=await post('/api/verify-payment',receipt);
+    assert.equal(unavailable.status,502);assert.doesNotMatch(unavailable.body.error,/secret detail/);assert.equal(unavailable.body.reports,undefined);
+    assert.equal((await store.getGrant(receipt.reference)).remaining,0);
+   } finally {global.fetch=providerFetch;}
+  });
   const home=await realFetch(base);assert.match(home.headers.get('content-security-policy'),/script-src 'self' 'sha256-/);
   assert.ok(!home.headers.get('content-security-policy').split(';').find(x=>x.trim().startsWith('script-src')).includes('unsafe-inline'));
  }finally{global.fetch=realFetch;store.track=realTrack;store.durable=realDurable;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
