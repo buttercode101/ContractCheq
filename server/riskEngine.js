@@ -515,6 +515,7 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     priorities,
     confidence,
     criticalCount: severe,
+    plainLanguageGuide: require('./plainLanguage').buildPlainLanguageGuide(text, docType),
     docTitle: fileName ? fileName.replace(/\.[^.]+$/, '') : `${docType} Agreement`,
     docType: `${docType} • analysed just now`,
     issues: found,

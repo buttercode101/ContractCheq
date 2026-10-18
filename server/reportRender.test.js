@@ -48,6 +48,7 @@ test('free report renders findings, notes, details and unlock controls', () => {
     assert.ok(html.includes(required), `missing free report content: ${required}`);
   assert.ok(!html.includes('Recommended action'));
   assert.ok(!html.includes('Export PDF'));
+  assert.ok(!html.includes('Find wording in your contract'));
 });
 
 test('paid report renders every finding, recommendation, impact and PDF action', () => {
@@ -57,16 +58,19 @@ test('paid report renders every finding, recommendation, impact and PDF action',
   for (const required of ['Recommended action', 'Potential impact.', 'Export PDF', 'What to do before you sign', 'notes-card'])
     assert.ok(html.includes(required), `missing paid report content: ${required}`);
   assert.ok(!html.includes('Unlock report'));
+  assert.ok(html.includes('Your contract, in everyday language'));
+  assert.ok(html.includes('Original wording'));
+  assert.ok(html.includes('Find wording in your contract'));
 });
 
 test('PDF export paginates long findings before writing outside the page', () => {
   const result = { ...specimen(), isPaid: true };
   result.issues[0].analysis = 'Long paragraph '.repeat(3000);
-  let pages = 1, saved = false, writes = 0;
+  let pages = 1, saved = false, writes = 0, output = [];
   class PDF {
     setFontSize() {}
     splitTextToSize(text) { return String(text).match(/.{1,90}/g) || ['']; }
-    text(text, x, y) { assert.ok(y >= 16 && y <= 280, `text outside page: ${y}`); writes++; }
+    text(text, x, y) { assert.ok(y >= 16 && y <= 280, `text outside page: ${y}`); writes++; output.push(text); }
     addPage() { pages++; }
     save() { saved = true; }
   }
@@ -81,4 +85,6 @@ test('PDF export paginates long findings before writing outside the page', () =>
   assert.ok(button, 'export button must exist');
   button.props.onClick();
   assert.ok(saved && pages > 1 && writes > 100);
+  assert.ok(output.join(' ').includes('YOUR CONTRACT, IN EVERYDAY LANGUAGE'));
+  assert.ok(output.join(' ').includes('Original wording:'));
 });

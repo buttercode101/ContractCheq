@@ -3,6 +3,8 @@
 ## Positioning
 Understand what you're signing before you sign it. ContractCheq is plain-language contract risk triage, not legal advice.
 
+Paid value: understand common contract wording section by section, with original text, legal-word definitions, money/time details and practical questions. The reading guide is included in every paid report and PDF; it does not require optional AI enrichment. Explain coverage limits and unknown wording rather than promise a complete legal review.
+
 ## Initial wedge
 Residential leases first: deposits, cancellation/notice, inspections/entry, one-sided fees, privacy/data clauses. Secondary: employment contracts. Expand only from observed use.
 

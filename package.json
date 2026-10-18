@@ -1,7 +1,7 @@
 {
   "name": "contractcheck-sa",
-  "version": "3.0.0",
-  "description": "ContractCheck SA — cheapest SA/UK AI contract risk triage. Check & Flag Only.",
+  "version": "3.1.0",
+  "description": "ContractCheck SA — source-linked plain-language contract guides and SA/UK risk triage.",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",

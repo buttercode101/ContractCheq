@@ -23,6 +23,7 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   assert.equal(a.status,200);assert.equal(a.body.isPaid,false);assert.ok(a.body.issuesCount>0);
   assert.equal(a.body.exposure,undefined);assert.equal(a.body.highlightedClauses,undefined);
   assert.equal(a.body.priorities,undefined);assert.equal(a.body.decision,undefined);
+  assert.equal(a.body.plainLanguageGuide,undefined);
   assert.ok(a.body.issues.every(x=>x.recommendation===undefined&&x.impact===undefined));
   assert.equal((await post('/api/analyze-text',{text:{}})).status,400);
   assert.equal((await post('/api/analyze-text',{text:'   ',jurisdiction:'ZA'})).status,400);
@@ -50,6 +51,8 @@ test('uploads and payment authorization reject mismatches, replay and overspendi
   const unlock={analysisId:a.body._id,reference:receipt.reference,email:receipt.email};
   const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);assert.ok(full.body.issues[0].recommendation);
   assert.ok(full.body.priorities[0].action);assert.ok(full.body.decision);
+  assert.ok(full.body.plainLanguageGuide.sections.length>0);
+  assert.ok(full.body.plainLanguageGuide.sections.some(s=>s.original.includes('non-refundable')));
   assert.equal((await post('/api/unlock-analysis',unlock)).status,200);
   assert.equal((await post('/api/unlock-analysis',{...unlock,analysisId:b.body._id})).status,402);
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);

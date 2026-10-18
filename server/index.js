@@ -270,6 +270,7 @@ function freeViewOf(analysis) {
     ...analysis,
     decision: undefined,
     priorities: undefined,
+    plainLanguageGuide: undefined,
     issues: analysis.issues.slice(0, 3).map(({recommendation,impact,...preview}) => preview),
     exposure: undefined,
     highlightedClauses: undefined,
@@ -307,7 +308,8 @@ async function verifyPaystack(reference) {
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
-    version: '3.0.0',
+    version: require('../package.json').version,
+    plainLanguageGuide: true,
     paystack: Boolean(PAYSTACK_SECRET && PAYSTACK_PUBLIC && store.durable()),
     storage: store.durable(),
     groq: Boolean(process.env.GROQ_API_KEY),

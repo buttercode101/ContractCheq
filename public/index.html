@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"/>
 <title>ContractCheck — Understand your contract before you sign</title>
-<meta name="description" content="Upload a South African or UK contract and get a plain-language risk triage before you sign. Free preview; full report from R19. Not legal advice."/>
+<meta name="description" content="Understand your contract in everyday language. Free risk preview; paid reading guides, original wording, legal-word explanations and full reports from R19. Not legal advice."/>
 <script src="/vendor/react.production.min.js" crossorigin></script>
 <script src="/vendor/react-dom.production.min.js" crossorigin></script>
 <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -68,6 +68,41 @@ function trapFocus(e) {
   const first=items[0],last=items[items.length-1];
   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+}
+
+function PlainLanguageGuide({guide}) {
+  const [query,setQuery]=useState('');
+  const [limit,setLimit]=useState(20);
+  if(!guide)return h('section',{className:'plain-guide'},h('h2',null,'Your contract, in everyday language'),h('p',null,'No reading guide was saved with this older report. Upload the current agreement for a new scan.'));
+  const sections=guide.sections||[];
+  const filtered=sections.filter(s=>[s.original,s.title,s.explanation,...s.glossary.map(t=>t.term)].join(' ').toLowerCase().includes(query.toLowerCase().trim()));
+  const amounts=sections.flatMap(s=>s.amounts.map(value=>({value,source:s.sourceLabel})));
+  const timings=sections.flatMap(s=>s.timeTerms.map(value=>({value,source:s.sourceLabel})));
+  return h('section',{className:'plain-guide','aria-labelledby':'plain-guide-title'},
+    h('div',{className:'eyebrow'},'Included in every paid report'),
+    h('h2',{id:'plain-guide-title'},'Your contract, in everyday language'),
+    h('p',{className:'guide-intro'},guide.overview),
+    h('p',{className:'guide-coverage'},guide.coverage.includedSections+' of '+guide.coverage.totalSections+' extracted text sections included. '+guide.coverage.needsReview+' need closer reading.'),
+    guide.coverage.limited&&h('p',{role:'status',className:'extraction-warning'},'Guide limit reached: only the first 400 text sections are included. Read the remaining agreement separately.'),
+    h('div',{className:'guide-facts'},[['Money mentioned',amounts],['Dates and time periods',timings]].map(([label,items])=>h('div',{key:label},h('h3',null,label),items.length?h('ul',null,items.slice(0,8).map((item,i)=>h('li',{key:i},h('strong',null,item.value),h('span',null,item.source))),items.length>8&&h('li',null,'More appear in the section guide below.')):h('p',null,'No matching wording recognised. Check the original agreement.')))),
+    h('details',{className:'guide-checklist'},h('summary',null,'Things to confirm before agreeing'),h('ul',null,guide.checklist.map(item=>h('li',{key:item.title},h('strong',null,item.title+' — '+(item.found?'wording recognised':'check the agreement')),h('p',null,item.note))))),
+    h('label',{className:'guide-search-label',htmlFor:'guide-search'},'Find wording in your contract'),
+    h('input',{id:'guide-search',type:'search',placeholder:'Try deposit, notice, liability or a clause number',value:query,onChange:e=>{setQuery(e.target.value);setLimit(20);}}),
+    h('p',{className:'guide-result-count',role:'status','aria-live':'polite'},filtered.length+' matching text sections'+(filtered.length>limit?' · showing the first '+limit:'')),
+    h('div',{className:'guide-sections'},filtered.slice(0,limit).map(section=>h('details',{key:section.id,className:'guide-clause',id:'guide-'+section.id},
+      h('summary',null,h('span',null,h('small',null,section.sourceLabel+(section.needsReview?' · needs closer reading':'')),h('strong',null,section.title))),
+      h('div',{className:'guide-clause-body'},
+        h('h3',null,'What this part is about'),h('p',null,section.explanation),
+        section.wordingChanged&&h(React.Fragment,null,h('h3',null,'In simpler words'),h('p',{className:'guide-rewording'},section.simplerWording)),
+        h('h3',null,'Original wording'),h('blockquote',null,section.original),
+        (section.amounts.length>0||section.timeTerms.length>0)&&h('p',null,h('strong',null,'Keep these details: '),[...section.amounts,...section.timeTerms].join(' · ')),
+        section.qualifiers.length>0&&h('p',{className:'guide-attention'},h('strong',null,'Words that change the meaning: '),section.qualifiers.join(' · '),'. Read them with the whole sentence; they may limit or protect a right.'),
+        section.crossReferences.length>0&&h('p',{className:'guide-attention'},'Read the linked wording too: '+section.crossReferences.join(', ')+'. It may change this section. An attachment may not have been uploaded.'),
+        section.glossary.length>0&&h('dl',{className:'guide-glossary'},section.glossary.map(term=>h('div',{key:term.term},h('dt',null,term.term),h('dd',null,term.meaning)))),
+        section.questions.length>0&&h(React.Fragment,null,h('h3',null,'Questions to ask'),h('ul',null,section.questions.map(question=>h('li',{key:question},question)))))))),
+    filtered.length===0&&h('p',null,'No text sections match. Try another word; this does not mean the term is absent from the complete contract.'),
+    filtered.length>limit&&h('button',{type:'button',className:'secondary-button',onClick:()=>setLimit(n=>n+20)},'Show 20 more text sections'),
+    h('p',{className:'guide-caveat'},guide.caveat));
 }
 
 function App() {
@@ -283,6 +318,27 @@ function App() {
     if(result.decision) line('BOTTOM LINE: '+result.decision, 11);
     if(result.confidence) line('COVERAGE: '+result.confidence, 8);
     if(result.exposure) line('MONEY AT STAKE: '+result.exposure, 9);
+    if(result.plainLanguageGuide) {
+      var guide=result.plainLanguageGuide;
+      line('YOUR CONTRACT, IN EVERYDAY LANGUAGE',14);
+      line(guide.overview,9);
+      line('Coverage: '+guide.coverage.includedSections+' of '+guide.coverage.totalSections+' extracted text sections. '+(guide.coverage.limited?'Guide limit reached; review remaining text separately.':''),9);
+      line(guide.caveat,8);
+      guide.sections.forEach(function(section) {
+        line(section.sourceLabel+': '+section.title,11);
+        line('What this part is about: '+section.explanation,9);
+        if(section.wordingChanged) line('In simpler words: '+section.simplerWording,9);
+        line('Original wording: '+section.original,9);
+        if(section.amounts.length||section.timeTerms.length) line('Keep these details: '+section.amounts.concat(section.timeTerms).join(' | '),9);
+        if(section.qualifiers.length) line('Words to check in context: '+section.qualifiers.join(', '),9);
+        if(section.crossReferences.length) line('Read linked wording too: '+section.crossReferences.join(', '),9);
+        section.questions.forEach(function(question){line('Ask: '+question,9);});
+      });
+      if(guide.glossary.length) line('LEGAL WORDS EXPLAINED',12);
+      guide.glossary.forEach(function(term){line(term.term+': '+term.meaning,9);});
+      line('THINGS TO CONFIRM',12);
+      guide.checklist.forEach(function(item){line(item.title+': '+item.note,9);});
+    }
     y += 2;
     (result.issues || []).forEach(function(iss, i) {
       line((i + 1) + '. [' + (iss.severity || '') + '] ' + (iss.law || ''), 11);
@@ -313,7 +369,7 @@ function App() {
           h('div',{className:'eyebrow'},h('span',{className:'eyebrow-dot'}),'Contract clarity, before the commitment'),
           h('h1',{className:'hero-title serif'},'Read the risks.',h('br'),h('em',null,'Before you sign.')),
           h('p',{className:'hero-copy'},'A clearer picture of your lease, job offer, or agreement. See the clauses worth a second look, with South African or UK rules.'),
-          h('div',{className:'hero-proof'},h('span',null,h(Icon,{name:'check',size:16}),'Free score + 3 flags'),h('span',null,h(Icon,{name:'check',size:16}),'Full reports from R19')),
+          h('div',{className:'hero-proof'},h('span',null,h(Icon,{name:'check',size:16}),'Free score + 3 flags'),h('span',null,h(Icon,{name:'check',size:16}),'Plain-language guide + full report from R19')),
           h('div',{className:'hero-caption'},h(Icon,{name:'shield',size:17}),'Your document. Your decision. No subscription.')),
         h('div',{className:'upload-panel'},
           h('div',{className:'panel-heading'},h('div',null,h('span',{className:'eyebrow'},'Start with a free scan'),h('h2',null,'Check your contract')),h('span',{className:'panel-icon'},h(Icon,{name:'document',size:25}))),
@@ -325,7 +381,7 @@ function App() {
               h('label',{className:'upload-label'},h(Icon,{name:'upload',size:18}),'Choose a file',h('input',{className:'file-control',type:'file','aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})),
               h('p',{className:'file-hint'},'PDF, text, or a clear photo · up to '+(config.maxFileMb||4)+' MB'))),
           h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},'Document excerpts may be shared with AI providers.'))),
-          h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Files are deleted after processing. ',h('button',{onClick:()=>go('privacy')},'Privacy details'))),
+          h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Uploaded file deleted after processing; report text kept up to 48 hours. ',h('button',{onClick:()=>go('privacy')},'Privacy details'))),
           serverOk==='offline'&&h('p',{role:'status',className:'connection-note'},'Connection unavailable. Please try again shortly.'))),
       h('section',{className:'how-section','aria-label':'How it works'},h('div',{className:'how-grid'},[['01','Upload','Choose your rules and add a document.'],['02','Understand','Read your score and the flagged clauses.'],['03','Decide','Take the next step with a clearer picture.']].map(x=>h('div',{key:x[0],className:'how-item'},h('span',{className:'how-num'},x[0]),h('div',null,h('h3',null,x[1]),h('p',null,x[2])))))),
       h('section',{className:'examples-section'},h('div',{className:'section-heading'},h('div',null,h('div',{className:'eyebrow'},'A look inside'),h('h2',null,'Know what to expect.'),h('p',null,'Explore a full example report before you upload.')),h('span',{className:'section-caption'},'Sample documents · Real rule-engine results')),
@@ -350,7 +406,8 @@ function App() {
           h('div',null,h('span',null,'Confidence'),h('strong',null,result.confidence||'Rule-based review'))),
           result.priorities&&result.priorities.length>0&&h('div',{className:'priority-actions'},h('h3',null,'What to do before you sign'),result.priorities.map((p,i)=>h('div',{key:i,className:'priority-action'},h('span',null,String(i+1).padStart(2,'0')),h('div',null,h('strong',null,p.title),h('p',null,p.action)))))),
         result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
-      !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
+      !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock your plain-language contract guide, every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
+      isUnlocked&&h(PlainLanguageGuide,{guide:result.plainLanguageGuide}),
       h('div',{className:'findings-heading'},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
       h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
         h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),
@@ -368,18 +425,19 @@ function App() {
   if(view==='pricing'){
     const plans=[
       {product:'free',label:'Free scan',price:'R0',sub:'A first look, without a commitment.',cta:'Upload a contract',features:['Your risk score and risk level','Analysis of the first 3 flags','SA or UK rules'],note:'No payment needed.'},
-      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Bottom-line sign / negotiate / stop guidance','Every risk + missing-protection check','Prioritized actions and negotiation points','Money-at-stake context where detectable','Downloadable decision-ready PDF'],note:'All full-report features included.',featured:true},
-      {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
-      {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
+      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Contract explained in everyday language','Original wording beside each explanation','Legal words, costs, deadlines and questions to ask','Bottom-line sign / negotiate / stop guidance','Every risk + missing-protection check','Prioritized actions and negotiation points','Money-at-stake context where detectable','Downloadable decision-ready PDF'],note:'All full-report features included.',featured:true},
+      {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['Plain-language guide in every report','3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
+      {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['Plain-language guide in every report','10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
     ];
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
       h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
-      h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Plain-English findings','Flagged excerpts, severity, and relevant law references.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
+      h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
       h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
         ['How do report credits work?','Each credit unlocks one full report. Keep your Paystack payment reference and receipt email to use remaining credits. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
-        ['What do I get for free?','Your risk score, risk level, document type, and analysis of the first 3 flagged issues. You can also see the titles of remaining flags. Full recommendations, impact notes, and PDF export require an unlock.'],
-        ['Is this legal advice?','No. ContractCheck provides automated risk triage. Results may be incomplete or incorrect. We do not draft or rewrite clauses, and we do not replace a qualified attorney.'],
+        ['What is the plain-language contract guide?','Every paid report includes a source-linked reading guide: simpler wording for common legal phrases, topic explanations, exact money and time wording, legal-word definitions and questions to ask. Original wording stays beside the explanation. It covers extracted text, not unreadable sections or missing attachments. Unrecognised wording and cross-references are marked for closer reading. The guide does not require optional AI insights.'],
+        ['What do I get for free?','Your risk score, risk level, document type, and analysis of the first 3 flagged issues. You can also see the titles of remaining flags. The plain-language guide, full recommendations, impact notes, and PDF export require an unlock.'],
+        ['Is this legal advice?','No. ContractCheck provides automated risk triage. Results may be incomplete or incorrect. We explain wording as a reading aid, do not draft replacement clauses, and do not replace a qualified attorney.'],
         ['What happens if I add AI insights?','This optional setting sends document excerpts to AI providers. Extra AI-suggested flags are labelled in your report. Leave it off to use only the SA or UK rule engine.'],
         ['What if a payment does not unlock my report?','Keep your Paystack reference and receipt email. Refunds are considered case by case where an unlock fails after successful payment. Email buttercode101@gmail.com with your Paystack reference and receipt email so the payment can be traced.']
       ].map(x=>h('details',{key:x[0]},h('summary',null,x[0],h(Icon,{name:'chevron',size:18})),h('p',null,x[1])))));
@@ -388,8 +446,8 @@ function App() {
   if (view === 'privacy') {
     body = h('section', {className: 'document-page'},
       h('h1', {className: 'serif'}, 'Privacy Policy'),
-      h('p', null, 'Files are processed to extract text and produce a risk report. We do not sell your documents.'),
-      h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results are available for 48 hours so you can unlock them after payment. Expired records are removed by the daily cleanup.'),
+      h('p', null, 'Files are processed to extract text and produce a risk report and a plain-language reading guide. We do not sell your documents.'),
+      h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results, including extracted wording in the reading guide, are stored privately for up to 48 hours so you can unlock them after payment. Expired records are removed by the daily cleanup. Private notes are saved in your browser on this device.'),
       h('p', null, 'If you enable AI enrichment, text excerpts are sent to Groq and/or TinyFish under their terms. Disable AI enrichment to keep analysis on our rules engine only.'),
       h('p', null, 'Payments are processed by Paystack. We receive payment confirmation, not your full card number.'),
       h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
@@ -399,8 +457,8 @@ function App() {
   if (view === 'terms') {
     body = h('section', {className: 'document-page'},
       h('h1', {className: 'serif'}, 'Terms of Use'),
-      h('p', null, 'ContractCheck provides automated risk triage only. It is not a law firm and does not provide legal advice. No attorney–client relationship is created.'),
-      h('p', null, 'Check & Flag Only: we identify potential issues and cite publicly known legal themes; we do not draft or rewrite contracts for you.'),
+      h('p', null, 'ContractCheck provides automated contract explanations and risk triage. It is not a law firm and does not provide legal advice. No attorney–client relationship is created.'),
+      h('p', null, 'We explain common contract wording and identify potential issues. The reading guide is not a replacement contract, a complete legal review or a decision about enforceability. We do not draft replacement clauses for you.'),
       h('p', null, 'Results may be incomplete or incorrect. Always consult a qualified attorney for decisions that matter.'),
       h('p', null, 'Pricing: digital delivery after Paystack verification. Refunds case-by-case if unlock fails after successful payment (provide reference).'),
       h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
