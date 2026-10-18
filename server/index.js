@@ -490,6 +490,7 @@ app.post('/api/unlock-analysis', payLimiter, async (req,res,next)=> {
     if(typeof ref!=='string'||ref==='credit') return res.status(402).json({error:'Payment receipt required'});
     const existing=await store.getGrant(ref);
     if(!existing||existing.email!==String(email||'').toLowerCase().trim()) return res.status(403).json({error:'Valid payment receipt and email required'});
+    if(req.body.reopenOnly===true&&!existing.unlocked?.includes(analysisId)) return res.status(403).json({error:'This receipt has not unlocked this report. Reopening never spends a new credit.'});
     const grant=await store.useCredit(ref,analysisId);
     if(!grant) return res.status(402).json({error:'No report credits remaining'});
     await trackSafely('unlock_success',{via:'verified_credit'});
