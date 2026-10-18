@@ -23,3 +23,16 @@ test('a genuinely blank PDF page does not invalidate readable later pages',async
   assert.equal(r.status,200,body.error);assert.equal(body.extraction.pages,2);assert.match(body.extraction.warning,/blank page/);assert.ok(body.issues.some(i=>i.id.startsWith('rha-entry')));
  }finally{server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
 });
+
+test('short signature text is retained rather than rejected or called blank',async()=>{
+ const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+ try{
+  const form=new FormData();form.set('file',new Blob([fixturePDF(['RESIDENTIAL LEASE. The deposit is refundable with interest. A joint inspection is required.','Signature of tenant:','Landlord may enter the dwelling without notice.'])],{type:'application/pdf'}),'signature-page.pdf');
+  const r=await fetch('http://127.0.0.1:'+server.address().port+'/api/analyze',{method:'POST',body:form});const body=await r.json();
+  assert.equal(r.status,200,body.error);assert.equal(body.extraction.pages,3);
+  const stored=await require('./store').getAnalysis(body._id);
+  assert.ok(stored.full.plainLanguageGuide.sections.some(s=>s.original.includes('Signature of tenant:')));
+  assert.ok(!String(body.extraction.warning).includes('blank page'));
+  assert.ok(body.issues.some(i=>i.id.startsWith('rha-entry')));
+ }finally{server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
+});

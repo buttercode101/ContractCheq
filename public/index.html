@@ -132,6 +132,7 @@ function App() {
   const overlayOpener=useRef(null);
   const suppressOverlayFocus=useRef(false);
   const initialView=useRef(true);
+  const reportRequest=useRef(null);
   var _er = useState(''); var error = _er[0]; var setError = _er[1];
   var _r = useState(null); var result = _r[0]; var setResult = _r[1];
   var _u = useState(ls.unlocked || []); var unlocked = _u[0]; var setUnlocked = _u[1];
@@ -170,20 +171,39 @@ function App() {
     if(menuOpen)document.querySelector('#mobile-menu button')?.focus();
     return ()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',onKey);if(!suppressOverlayFocus.current)opener?.focus({preventScroll:true});suppressOverlayFocus.current=false;};
   },[!!checkout,menuOpen]);
-  function go(v){const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
-  useEffect(()=>{const onBack=()=>{setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
+  function cancelReportRequest(){
+    const current=reportRequest.current;
+    reportRequest.current=null;
+    if(current){clearTimeout(current.timer);current.controller.abort();}
+    setScanning(false);setScanMsg('');
+  }
+  function beginReportRequest(){
+    cancelReportRequest();
+    const current={controller:new AbortController(),timedOut:false};
+    current.timer=setTimeout(()=>{current.timedOut=true;current.controller.abort();},75000);
+    reportRequest.current=current;
+    return current;
+  }
+  function finishReportRequest(current){
+    clearTimeout(current.timer);
+    if(reportRequest.current===current){reportRequest.current=null;setScanning(false);setScanMsg('');}
+  }
+  function go(v){cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
   function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
 
 
   var isUnlocked = result && (result.isPaid === true || result.isDemo === true);
 
   var openDemo = useCallback(function(key) {
+    const current=beginReportRequest();
     setError('');
-    fetch(API+'/api/demo/'+encodeURIComponent(key)).then(function(r){return r.json().then(function(data){return {r:r,data:data};});}).then(function(x){
+    fetch(API+'/api/demo/'+encodeURIComponent(key),{signal:current.controller.signal}).then(function(r){return r.json().then(function(data){return {r:r,data:data};});}).then(function(x){
+      if(reportRequest.current!==current||current.controller.signal.aborted)return;
       if(!x.r.ok) throw new Error(x.data.error||'Example unavailable');
       setJurisdiction(x.data.jurisdiction||'ZA'); setResult(x.data); setView('result');
       track('demo_open',{id:key,rulesVersion:x.data.rulesVersion}); window.scrollTo({top:0,behavior:'smooth'});
-    }).catch(function(e){setError('Could not load the current example report: '+e.message);});
+    }).catch(function(e){if(reportRequest.current===current)setError(current.timedOut?'The example took too long to load. Please try again.':'Could not load the current example report: '+e.message);}).finally(()=>finishReportRequest(current));
   }, []);
 
   var runFile = useCallback(function(file) {
@@ -191,6 +211,7 @@ function App() {
     setError('');
     if(file.size > (config.maxFileMb || 4)*1024*1024){setError('This file is too large. Choose a file under '+(config.maxFileMb || 4)+'MB.');return;}
     if(!/\.(pdf|txt|png|jpg|jpeg|webp|bmp|tif|tiff)$/i.test(file.name)){setError('Choose a PDF, text file, or a clear photo of your document.');return;}
+    const current=beginReportRequest();
     setScanning(true);
     setScanMsg('Reading document…');
     track('upload_start', {jurisdiction: jurisdiction, name: file.name});
@@ -199,9 +220,10 @@ function App() {
     fd.append('jurisdiction', jurisdiction);
     if (enrichLLM) fd.append('enrich', '1');
     setScanMsg(enrichLLM ? 'Reading your document and checking for risks…' : 'Checking your document for risks…');
-    fetch(API + '/api/analyze', {method: 'POST', body: fd})
+    fetch(API + '/api/analyze', {method: 'POST', body: fd,signal:current.controller.signal})
       .then(function(res) { return res.json().then(function(data) { return {res: res, data: data}; }); })
       .then(function(x) {
+        if(reportRequest.current!==current||current.controller.signal.aborted)return;
         if (!x.res.ok) throw new Error(x.data.error || x.data.hint || 'Analysis failed');
         var data = x.data;
         if (data.freePreview && data.issuesLocked) {
@@ -221,13 +243,11 @@ function App() {
         window.scrollTo({top: 0, behavior: 'smooth'});
       })
       .catch(function(e) {
-        setError(e.message || 'Analysis failed');
+        if(reportRequest.current!==current)return;
+        setError(current.timedOut?'The scan took too long. Please try again with a smaller file.':e.message || 'Analysis failed');
         track('analyze_error', {message: String(e.message || '').slice(0, 80)});
       })
-      .finally(function() {
-        setScanning(false);
-        setScanMsg('');
-      });
+      .finally(function() {finishReportRequest(current);});
   }, [jurisdiction, enrichLLM, config.maxFileMb]);
 
   function onFile(e) {

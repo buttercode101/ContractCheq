@@ -62,7 +62,7 @@ async function extractFromPdf(filePath) {
   globalThis.ImageData = graphics.ImageData;
   globalThis.Path2D = graphics.Path2D;
   const { PDFParse } = require('pdf-parse');
-  const parser = new PDFParse({data:fs.readFileSync(filePath)});
+  const parser = new PDFParse({data:fs.readFileSync(filePath),standardFontDataUrl:path.join(path.dirname(require.resolve('pdfjs-dist/package.json')),'standard_fonts/')});
   try {
     const data = await parser.getText();
     const pages = data.total || 1;
@@ -71,27 +71,38 @@ async function extractFromPdf(filePath) {
     // OCR every image-only page, including mixed PDFs; never silently ignore later pages.
     if (scanned.length > 3) throw Object.assign(new Error('This PDF has more than 3 scanned pages. Split it into files of up to 3 pages.'), {status:422});
     let confidence = 0.9, blankPages = 0, ocrPages = 0;
+    const limitedPages=[];
     if (scanned.length) {
       const screenshots = await parser.getScreenshot({partial:scanned,desiredWidth:1600,imageDataUrl:false});
       for (const image of screenshots.pages) {
         const target = extractedPages.find(p => p.num === image.pageNumber);
+        const original=(target?.text||'').trim();
         const bitmap=await graphics.loadImage(Buffer.from(image.data));
         const canvas=graphics.createCanvas(bitmap.width,bitmap.height),ctx=canvas.getContext('2d');
         ctx.drawImage(bitmap,0,0);
         const pixels=ctx.getImageData(0,0,bitmap.width,bitmap.height).data;
         let blank=true;
         for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>16&&(pixels[i]<249||pixels[i+1]<249||pixels[i+2]<249)){blank=false;break;}
-        if(blank){if(target)target.text='';blankPages++;continue;}
+        if(blank){
+          // Keep known text even if the renderer fails to paint its font.
+          if(original){limitedPages.push(image.pageNumber);confidence=Math.min(confidence,0.7);}
+          else {if(target)target.text='';blankPages++;}
+          continue;
+        }
         ocrPages++;
         const result = await extractFromImage(Buffer.from(image.data),12000);
-        if (target) target.text = result.text;
         confidence = Math.min(confidence, result.confidence);
+        if(result.text.length<30&&original){
+          if(target)target.text=original;
+          limitedPages.push(image.pageNumber);confidence=Math.min(confidence,0.7);continue;
+        }
+        if (target) target.text = original&&!result.text.replace(/\s+/g,' ').includes(original.replace(/\s+/g,' ')) ? original+'\n'+result.text : result.text;
         if (result.text.length < 30) throw Object.assign(new Error('A scanned page could not be read. Upload a sharper scan or photo.'),{status:422});
       }
     }
     const text = extractedPages.length ? extractedPages.map(p => p.text).join('\n\n').trim() : (data.text||'').trim();
     return {text,pages,method:ocrPages?'pdf-ocr':'pdf-parse',confidence,
-      warning:[blankPages?`${blankPages} visually blank page(s) skipped.`:null,confidence<0.75?'Some text may be unclear. Verify the extracted clauses against your original document.':null].filter(Boolean).join(' ')||null};
+      warning:[limitedPages.length?`Page(s) ${limitedPages.join(', ')} have limited readable text. Their text layer was kept; check signatures and images against the original.`:null,blankPages?`${blankPages} visually blank page(s) skipped.`:null,confidence<0.75?'Some text may be unclear. Verify the extracted clauses against your original document.':null].filter(Boolean).join(' ')||null};
   } catch (error) {
     if (error.status) throw error;
     throw Object.assign(new Error('This PDF could not be read. It may be damaged or password-protected. Upload an unlocked PDF or a clear photo.'), {status:422});

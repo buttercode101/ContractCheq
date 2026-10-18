@@ -35,3 +35,11 @@ Pricing includes receipt restoration using the original Paystack reference and r
 Both text inputs and extracted uploads are limited to 200,000 characters. Analytics failures cannot invalidate completed scans or consume a credit without returning the report; retrying the same report is safe. Telemetry accepts only enumerated labels and numeric metrics. Optional provider calls have bounded timeouts and AI findings require quoted evidence from the document; this does not verify the AI's legal conclusions.
 
 The same hashed-script CSP and anti-framing headers cover Express and Vercel static routes. Inline styles remain permitted for React layout. Paystack checkout and fonts have explicit external origins. React and jsPDF 4.2.1 are pinned npm dependencies served locally, included in the dependency audit and packaged identically for local development and Vercel.
+
+### Reproduced flow fixes (3.1.2)
+
+Navigating away from an upload or example cancels waiting for it. Late responses and errors cannot replace the current page, and an older request cannot replace a newer example. Client report requests have a 75-second timeout. Cancellation does not undo processing already received by the server.
+
+Short text layers, including signature-page labels, are retained even when OCR returns little text or a renderer paints white. Limited extraction is flagged for comparison with the original. Packaged PDF standard fonts are explicitly supplied to the renderer.
+
+Regression coverage executes the shipped React event handlers against the real Express API and a temporary ledger, mocking only the payment provider boundary. It covers rejected payment amounts and recovery when the first unlock response is lost after a credit was consumed. This is not evidence of a real settled payment.
