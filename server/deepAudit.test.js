@@ -36,7 +36,10 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
   const receipt={reference:'CC-recovery-deep-audit',email:'buyer@example.test'};
   const verified=await post('/api/verify-payment',receipt);assert.equal(verified.status,200);assert.equal(verified.body.credits,1);
   const unlock={analysisId:scan.body._id,...receipt};
+  assert.equal((await post('/api/unlock-analysis',{...unlock,reopenOnly:true})).status,403);
+  assert.equal((await store.getGrant(receipt.reference)).remaining,1);
   const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);assert.ok(full.body.plainLanguageGuide);
+  assert.equal((await post('/api/unlock-analysis',{...unlock,reopenOnly:true})).status,200);
   assert.equal((await post('/api/unlock-analysis',unlock)).status,200);
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);
   for(const [product,credits] of [['pack3',3],['pack10',10]]){
