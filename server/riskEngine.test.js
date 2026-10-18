@@ -1,4 +1,18 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{analyseContract}=require('./riskEngine');
+test('deposit-interest exclusions recognise deposit-first wording and a following sentence',()=>{
+ for(const wording of ['The deposit is R8000. No interest will be paid.','The deposit is R8000 and no interest will accrue.','The deposit is R8000.\nNo interest shall be paid.']){
+  const r=analyseContract('RESIDENTIAL LEASE AGREEMENT. '+wording,'lease.txt','ZA');
+  const finding=r.issues.find(i=>i.id.startsWith('rha-dep-'));
+  assert.ok(finding,'Missing deposit-interest flag: '+wording);
+  assert.match(finding.excerpt,/deposit/i);assert.match(finding.excerpt,/no interest/i);
+ }
+});
+test('deposit-interest exclusions preserve protective wording, commercial scope and unrelated rent interest',()=>{
+ for(const wording of ['The deposit is R8000 and earns interest in an interest-bearing account.','The deposit is R8000. No interest will be paid on overdue rent.','It is prohibited to hold the deposit without interest.','The deposit may not be held without interest.']){
+  assert.ok(!analyseContract('RESIDENTIAL LEASE AGREEMENT. '+wording,'lease.txt','ZA').issues.some(i=>i.id.startsWith('rha-dep-')),wording);
+ }
+ assert.ok(!analyseContract('COMMERCIAL LEASE for retail shop premises. The deposit is R8000. No interest will be paid.','shop.txt','ZA').issues.some(i=>i.id.startsWith('rha-dep-')));
+});
 for(const specimen of require('./test-contracts.json'))test(specimen.id,()=>{const r=analyseContract(specimen.text,specimen.id,specimen.jurisdiction);const ids=r.issues.map(x=>x.id.replace(/-\d+$/,'')); for(const expected of specimen.expected) assert.ok(ids.includes(expected), `missing expected ${expected}: ${ids.join(', ')}`);assert.ok(typeof r.exposure==='string' && r.exposure.length>0);assert.ok(r.coverageWarning);});
 test('Service cancellation is not an employment dismissal',()=>{assert.ok(!analyseContract('SERVICES AGREEMENT. Supplier may terminate without notice. Payment is due monthly.','service').issues.some(x=>x.id.startsWith('lra')));});
 test('Protective first match does not hide an unsafe clause later',()=>{const r=analyseContract('Nothing excludes liability for personal injury. Clause 7: Supplier excludes liability for death or personal injury caused by negligence.','service','UK');assert.equal(r.issuesCount,1);assert.match(r.issues[0].excerpt,/Clause 7/);});

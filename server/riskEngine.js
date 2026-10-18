@@ -2,7 +2,7 @@
  * ContractCheck risk engine v3 — ZA + UK
  * Check & Flag Only. Not legal advice.
  */
-const RULES_VERSION = '4.1-sa-2026';
+const RULES_VERSION = '4.1.1-sa-2026';
 
 const RULES = [
   {
@@ -33,6 +33,7 @@ const RULES = [
       /deposit\s+is\s+(non[- ]?refundable|forfeited|not\s+refundable)/i,
       /deposit.{0,50}(retained|kept|forfeited).{0,40}(all\s+circumstances|regardless|even\s+if)/i,
       /no\s+interest\s+(will\s+)?(accrue|be\s+paid|payable).{0,30}deposit/i,
+      /deposit[^.!?;\n]{0,60}(?:[.;\n]\s*)?\bno\s+interest\s+(?:(?:will|shall)\s+)?(?:accrue|be\s+paid|be\s+payable|is\s+payable)(?=\s*[.!?;\n]|$)/i,
       /deposit.{0,30}without\s+interest/i,
     ],
     fb: 'Deposit non-refundable / no interest accrues.',
@@ -424,7 +425,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
         const clause = (prefix + candidate[0] + text.slice(candidate.index + candidate[0].length, candidate.index + candidate[0].length + 65)).split(/[.!?;\n]/)[0];
         const protectedPrefix = /\b(nothing|never|not|must not|may not|shall not|does not|do not|cannot|can not|no provision)\b/i.test(prefix);
         const prohibited = /\b(prohibited|forbidden|not permitted|never be sold|will not be sold)\b/i.test(clause);
-        if (!protectedPrefix && !prohibited) { match = candidate; break; }
+        const protectedDeposit = rule.id === 'rha-dep' && /\bdeposit\b[^.!?;\n]{0,30}\b(?:may not|must not|shall not|cannot|can not)\b[^.!?;\n]{0,40}\b(?:without\s+interest|non[- ]?refundable|forfeited|not\s+refundable)\b/i.test(candidate[0]);
+        if (!protectedPrefix && !prohibited && !protectedDeposit) { match = candidate; break; }
       }
       if (match) {
         seen.add(rule.id);
