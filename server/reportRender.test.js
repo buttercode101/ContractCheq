@@ -9,7 +9,7 @@ const { analyseContract } = require('./riskEngine');
 
 // Render the shipped inline application with a selected report state. This catches
 // valid JavaScript that accidentally constructs findings outside the returned tree.
-function reportTree(result, windowExtras = {}) {
+function reportTree(result, windowExtras = {}, savedState = {}) {
   const script = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8')
     .split('<script>').at(-1).split('</script>')[0];
   let stateIndex = 0, root;
@@ -17,7 +17,7 @@ function reportTree(result, windowExtras = {}) {
     React: { ...React,
       useState(initial) {
         const index = stateIndex++;
-        const value = index === 0 ? {} : index === 1 ? 'result' : index === 3 ? 'online'
+        const value = index === 0 ? savedState : index === 1 ? 'result' : index === 3 ? 'online'
           : index === 15 ? result : typeof initial === 'function' ? initial() : initial;
         return [value, () => {}];
       },
@@ -87,4 +87,21 @@ test('PDF export paginates long findings before writing outside the page', () =>
   assert.ok(saved && pages > 1 && writes > 100);
   assert.ok(output.join(' ').includes('YOUR CONTRACT, IN EVERYDAY LANGUAGE'));
   assert.ok(output.join(' ').includes('Original wording:'));
+});
+
+
+test('a stale or forged browser unlock marker never grants report export',()=>{
+ const result={...specimen(),isPaid:false,freePreview:true};
+ const html=renderToStaticMarkup(reportTree(result,{}, {unlocked:[result._id]}));
+ assert.ok(!html.includes('Export PDF'));assert.ok(!html.includes('Find wording in your contract'));
+ assert.ok(html.includes('Unlock report'));
+});
+
+test('corrupt but valid-JSON browser storage is normalised before rendering',()=>{
+ const script=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8').split('<script>').at(-1).split('</script>')[0];
+ for(const value of ['null','[]','{"credits":"bad","email":12,"notes":{"x":{}},"unlocked":{}}']){
+  const context={React:{createElement:()=>{},...Object.fromEntries(['useState','useEffect','useCallback','useRef'].map(k=>[k,()=>{}]))},ReactDOM:{createRoot:()=>({render(){}})},document:{getElementById:()=>({})},localStorage:{getItem:()=>value}};
+  vm.createContext(context);vm.runInContext(script,context);
+  const saved=vm.runInContext('loadLS()',context);assert.ok(saved&&typeof saved==='object');assert.ok(!saved.email||typeof saved.email==='string');assert.ok(!saved.notes?.x);
+ }
 });

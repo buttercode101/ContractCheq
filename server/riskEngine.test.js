@@ -14,3 +14,18 @@ test('commercial lease does not receive residential Rental Housing Act findings'
  const r=analyseContract('COMMERCIAL LEASE AGREEMENT for retail shop premises. A security deposit is payable and access arrangements apply.','shop-lease.txt','ZA');
  assert.ok(!r.issues.some(x=>String(x.lawRef||x.law).includes('Rental Housing Act')));
 });
+
+test('deposit delay and long restraint patterns recognise real spaces',()=>{
+ assert.ok(analyseContract('RESIDENTIAL LEASE. The deposit will be returned after 60 days.','lease.txt').issues.some(i=>i.id.startsWith('rha-deposit-process')));
+ assert.ok(analyseContract('EMPLOYMENT AGREEMENT. A restraint of trade applies for 36 months after termination.','employment.txt').issues.some(i=>i.id.startsWith('restraint-')));
+});
+test('commercial deposits and service payments do not receive residential or employee rules',()=>{
+ assert.ok(!analyseContract('COMMERCIAL LEASE for retail shop premises. The deposit is returned after 60 days.','shop.txt').issues.some(i=>i.id.startsWith('rha-')));
+ assert.ok(!analyseContract('SERVICES AGREEMENT. The supplier may deduct any amount from the invoice.','service.txt').issues.some(i=>i.id.startsWith('employment-deductions')));
+});
+test('section numbers are not mistaken for rand amounts or minimum financial exposure',()=>{
+ const r=analyseContract('RESIDENTIAL LEASE. Refer to number 1000. The deposit is non-refundable.','lease.txt');
+ assert.match(r.exposure,/Not safely quantifiable/);
+ const paid=analyseContract('RESIDENTIAL LEASE. The rent is R8000. The deposit is non-refundable.','lease.txt');
+ assert.match(paid.exposure,/An amount of R/);assert.ok(!paid.exposure.includes('At least'));
+});

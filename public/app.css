@@ -92,3 +92,5 @@ body{background:radial-gradient(circle at 78% 4%,rgba(15,98,77,.045),transparent
 .guide-glossary{margin:16px 0}.guide-glossary>div{margin:12px 0}.guide-glossary dt{font-weight:700}.guide-glossary dd{margin:4px 0 0;color:var(--muted)}
 .guide-caveat{font-size:.8rem;border-top:1px solid var(--line);margin:22px 0 0;padding-top:18px}
 @media(max-width:640px){.plain-guide{padding:22px 18px;border-radius:16px}.guide-facts{grid-template-columns:1fr;gap:10px}.guide-clause summary{font-size:.94rem}.guide-clause-body{padding-inline:0}.guide-clause-body blockquote{padding:12px}}
+
+.receipt-recovery{max-width:640px;margin:48px auto;padding:24px;border:1px solid #d7dfd8;border-radius:16px}.receipt-recovery form{display:grid;gap:12px}.receipt-recovery input{width:100%;min-width:0;box-sizing:border-box;min-height:44px;padding:12px;border:1px solid #acb9af;border-radius:8px;font:inherit}.receipt-recovery p{line-height:1.6}

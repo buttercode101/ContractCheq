@@ -16,7 +16,7 @@ async function readObject(name) {
   }
   if(process.env.VERCEL) throw new Error('Private storage is not connected yet.');
   ensure(); const p = path.join(ROOT, digest(name)+'.json');
-  try { return {value:JSON.parse(fs.readFileSync(p,'utf8')),etag:null}; }
+  try { const bytes=fs.readFileSync(p,'utf8');return {value:JSON.parse(bytes),etag:digest(bytes)}; }
   catch(e) { if(e.code==='ENOENT') return null; throw e; }
 }
 async function writeObject(name,value,etag,create=false) {
@@ -24,6 +24,8 @@ async function writeObject(name,value,etag,create=false) {
     contentType:'application/json',allowOverwrite:!create,...(etag?{ifMatch:etag}:{})});
   if(process.env.VERCEL) throw new Error('Private storage is not connected yet.');
   ensure(); const p=path.join(ROOT,digest(name)+'.json');
+  // Synchronous compare-and-write keeps concurrent requests in this local process safe.
+  if(etag && digest(fs.readFileSync(p,'utf8'))!==etag) throw Object.assign(new Error('ETag mismatch'),{code:'PRECONDITION_FAILED'});
   fs.writeFileSync(p,JSON.stringify(value),{flag:create?'wx':'w'});
 }
 const conflict=e=>e.code==='EEXIST'||/already exists|precondition|etag/i.test(e.message||e.name);
@@ -59,8 +61,14 @@ async function useCredit(reference,analysisId) {
 }
 async function track(name,props={}) {
   // Never persist document names, excerpts, email addresses, or receipt references in telemetry.
-  const safe=Object.fromEntries(['jurisdiction','method','issues','score','product','amount','via'].filter(k=>k in props).map(k=>[k,props[k]]));
-  const event={name:String(name).slice(0,64),props:safe,at:Date.now()};
+  const safe={};
+  for (const k of ['jurisdiction','method','product','via']) {
+    const allowed={jurisdiction:['ZA','UK'],method:['pdf-parse','pdf-ocr','tesseract','plain-text','client-text'],product:['single','pack3','pack10'],via:['verified_credit']};
+    if(allowed[k].includes(props[k])) safe[k]=props[k];
+  }
+  for (const k of ['issues','score','amount']) if(typeof props[k]==='number'&&Number.isFinite(props[k])) safe[k]=props[k];
+  const eventNames=['page_view','demo_open','upload_start','analysis_view','analyze_error','paywall_click','pay_close','export_pdf','attorney_referral_click','payment_verified','analyze_complete','analyze_text','unlock_success'];
+  const event={name:eventNames.includes(name)?name:'other',props:safe,at:Date.now()};
   // Production-readable telemetry without exposing contract text, filenames, email or payment references.
   console.info('[telemetry]', JSON.stringify(event));
   await writeObject(key('events',crypto.randomUUID()),event,null,true);

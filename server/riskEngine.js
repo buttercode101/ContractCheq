@@ -2,7 +2,7 @@
  * ContractCheck risk engine v3 — ZA + UK
  * Check & Flag Only. Not legal advice.
  */
-const RULES_VERSION = '4.0-sa-2026';
+const RULES_VERSION = '4.1-sa-2026';
 
 const RULES = [
   {
@@ -190,7 +190,7 @@ const RULES = [
     id:'rha-deposit-process',
     laws:['Rental Housing Act s5(3)(c)-(g)'],
     severity:'MEDIUM RISK', score:74, tags:['RHA','Deposit'],
-    patterns:[/deposit.{0,90}(returned|refund).{0,30}(30|thirty|60|sixty)s+days/i,/deposit.{0,80}(administration fee|admin fee|cleaning fee).{0,40}(automatic|regardless|non[- ]refundable)/i,/tenant.{0,80}(waive|no right).{0,40}(inspection|joint inspection)/i],
+    patterns:[/deposit.{0,90}(returned|refund).{0,30}(30|thirty|60|sixty)\s+days/i,/deposit.{0,80}(administration fee|admin fee|cleaning fee).{0,40}(automatic|regardless|non[- ]refundable)/i,/tenant.{0,80}(waive|no right).{0,40}(inspection|joint inspection)/i],
     fb:'Deposit return, deduction or inspection process may prejudice the tenant.',
     analysis:'The Rental Housing Act regulates deposits, inspections, deductions and repayment. Automatic deductions or broad inspection waivers can undermine the statutory process.',
     rec:'Require itemised, evidenced deductions; preserve joint inspection rights; and state the applicable repayment timeline and interest treatment.',
@@ -220,7 +220,7 @@ const RULES = [
     id:'restraint',
     laws:['Common law','Magna Alloys principle'],
     severity:'HIGH RISK', score:80, tags:['Employment','Restraint'],
-    patterns:[/restraint of trade.{0,140}(24|36|48|60)s+months/i,/non[- ]compete.{0,100}(south africa|worldwide|anywhere).{0,100}(24|36|48|60)s+months/i,/restraint.{0,80}(all industries|any business|any employment)/i],
+    patterns:[/restraint of trade.{0,140}(24|36|48|60)\s+months/i,/non[- ]compete.{0,100}(south africa|worldwide|anywhere).{0,100}(24|36|48|60)\s+months/i,/restraint.{0,80}(all industries|any business|any employment)/i],
     fb:'Restraint may be unusually broad in duration, geography or activity.',
     analysis:'South African restraint clauses are generally enforceable unless unreasonable, with reasonableness assessed in context. Very broad geography, duration or activity can materially restrict future work.',
     rec:'Identify the legitimate interest being protected, then narrow duration, territory, customers and prohibited activities to that interest.',
@@ -410,8 +410,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
 
   for (const rule of pack) {
     if (seen.has(rule.id)) continue;
-    if (['bcea','lra','uk-wtr'].includes(rule.id) && !employment) continue;
-    if (['rha-entry','rha-dep'].includes(rule.id) && !residentialTenancy) continue;
+    if (['bcea','lra','uk-wtr','employment-deductions','employment-leave'].includes(rule.id) && !employment) continue;
+    if (['rha-entry','rha-dep','rha-deposit-process'].includes(rule.id) && !residentialTenancy) continue;
     if (['uk-deposit-cap','uk-s21-trap'].includes(rule.id) && !tenancy) continue;
     if (['cpa-unfair','onesided'].includes(rule.id) && employment) continue;
     for (const pattern of rule.patterns) {
@@ -494,10 +494,10 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
   if (score >= 70) level = 'High Risk';
   else if (score >= 40) level = 'Medium Risk';
 
-  const money=[...text.matchAll(/(?:R|ZAR)\s?([0-9][0-9 ,.]{1,14})/gi)].map(m=>Number(m[1].replace(/[ ,]/g,''))).filter(Number.isFinite);
+  const money=[...text.matchAll(/\b(?:R|ZAR)\s?([0-9][0-9 ,.]{1,14})/gi)].map(m=>Number(m[1].replace(/[ ,]/g,''))).filter(Number.isFinite);
   const maxMoney=money.length?Math.max(...money):null;
   const severe=found.filter(x=>x.rawScore>=80).length;
-  const exposure=maxMoney && severe ? 'At least R'+maxMoney.toLocaleString('en-ZA')+' appears in the contract; exact exposure depends on which obligations apply.' : 'Not safely quantifiable from the extracted terms';
+  const exposure=maxMoney && severe ? 'An amount of R'+maxMoney.toLocaleString('en-ZA')+' appears in the contract; exact exposure depends on which obligations apply.' : 'Not safely quantifiable from the extracted terms';
   const critical=found.slice().sort((a,b)=>b.rawScore-a.rawScore).slice(0,3);
   const decision=score>=70?'Do not sign unchanged until the high-risk items are resolved.':score>=40?'Negotiate the flagged items before signing.':'No major red flags were detected by this ruleset, but review the key commercial terms and omissions before signing.';
   const priorities=critical.map(x=>({title:x.law,action:x.recommendation,severity:x.severity}));

@@ -27,3 +27,11 @@ Pricing: R19 single report, R39 three reports, R99 ten reports. Receipts must ma
 Scans expire after 48 hours and are removed by daily cleanup. Saved private reports include original extracted wording needed by the guide. Uploaded originals are deleted after processing. Optional enrichment sends document excerpts to the selected third-party services. Browser notes remain on the device.
 
 Not legal advice. Rules-based risk screening does not prove legal validity or completeness. A real payment transaction has not been run as part of deployment verification.
+
+### Reliability and receipt recovery (3.1.1)
+
+Pricing includes receipt restoration using the original Paystack reference and receipt email. The server verifies the provider's original product, exact ZAR amount and customer; restoring cannot create replacement credits. Existing report unlocks remain idempotent even at zero credits. No charge is made by restoration.
+
+Both text inputs and extracted uploads are limited to 200,000 characters. Analytics failures cannot invalidate completed scans or consume a credit without returning the report; retrying the same report is safe. Telemetry accepts only enumerated labels and numeric metrics. Optional provider calls have bounded timeouts and AI findings require quoted evidence from the document; this does not verify the AI's legal conclusions.
+
+The same hashed-script CSP and anti-framing headers cover Express and Vercel static routes. Inline styles remain permitted for React layout. Paystack checkout and fonts have explicit external origins. React and jsPDF 4.2.1 are pinned npm dependencies served locally, included in the dependency audit and packaged identically for local development and Vercel.
