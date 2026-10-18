@@ -143,6 +143,7 @@ function App() {
   var _n = useState(ls.notes || {}); var notes = _n[0]; var setNotes = _n[1];
   const [restoreRef,setRestoreRef]=useState(ls.pendingReceipt || ls.paymentRef || '');
   const [restoring,setRestoring]=useState(false);
+  const [recoveredReports,setRecoveredReports]=useState(null);
 
   useEffect(function() {
     track('page_view', {});
@@ -195,8 +196,8 @@ function App() {
   function rememberPaidReport(full,reference,email){
     setStorageError(!saveLS({lastPaidReport:{analysisId:full._id,reference,email}}));
   }
-  async function reopenPaidReport(){
-    const saved=loadLS().lastPaidReport;
+  async function reopenPaidReport(candidate){
+    const saved=candidate&&typeof candidate.analysisId==='string'?candidate:loadLS().lastPaidReport;
     if(!saved||unlocking)return;
     const current=beginReportRequest();setUnlocking(true);setError('');
     try{
@@ -204,6 +205,7 @@ function App() {
       const full=await response.json();
       if(reportRequest.current!==current||current.controller.signal.aborted)return;
       if(!response.ok||!full.isPaid){if(response.status===404)saveLS({lastPaidReport:null});throw new Error(full.error||'Could not reopen this report.');}
+      rememberPaidReport(full,saved.reference,saved.email);
       setResult(full);setCredits(full.credits||0);setPaymentRef(saved.reference);setPayEmail(saved.email);setUnlocked(u=>[...new Set([...u,full._id])]);
       if(window.location.pathname!=='/')window.history.pushState({},'','/');setView('result');
     }catch(e){if(reportRequest.current===current)setError(current.timedOut?'Reopening took too long. Check your connection and try again.':e.message||'Could not reopen this report.');}
@@ -338,7 +340,8 @@ function App() {
       const v=await response.json();
       if(!response.ok||!v.ok)throw new Error(v.error||'Could not verify receipt');
       setPaymentRef(v.grantId);setCredits(v.credits);setPayEmail(v.email);
-      setNotice('Receipt restored: '+v.credits+' report credits remaining. Upload a contract or return to your current report to unlock it.');
+      setRecoveredReports({reports:Array.isArray(v.reports)?v.reports:[],reference:v.grantId,email:v.email});
+      setNotice('Receipt restored: '+v.credits+' report credits remaining. '+(v.reports?.length?'Reopen a retained report below without using another credit.':'No retained reports are available for this receipt. You can use remaining credits for a new scan.'));
     } catch(err){setError(err.message||'Could not restore receipt. Please try again.');}
     finally{setRestoring(false);window.scrollTo({top:0});}
   }
@@ -504,10 +507,10 @@ function App() {
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
       h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
-      h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment'))),
+      h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits and retained reports on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment')),recoveredReports&&h('div',{className:'receipt-reports'},h('h3',null,'Your available reports'),h('p',null,'Reports remain available for up to 48 hours after the scan.'),recoveredReports.reports.length?h('ul',null,recoveredReports.reports.map(r=>h('li',{key:r.id},h('button',{type:'button',className:'secondary-button',disabled:unlocking,onClick:()=>reopenPaidReport({analysisId:r.id,reference:recoveredReports.reference,email:recoveredReports.email})},'Reopen report: '+r.title),h('p',null,(r.jurisdiction==='UK'?'United Kingdom':'South Africa')+' · retained until '+new Date(r.expiresAt).toLocaleString('en-ZA'))))):h('p',null,'No retained reports are available for this receipt.'))),
       h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
       h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
-        ['How do report credits work?','Each credit unlocks one full report. Restore your Paystack reference and receipt email on the Pricing page to recover remaining credits on another device. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
+        ['How do report credits work?','Each credit unlocks one full report. Restore your Paystack reference and receipt email on the Pricing page to recover remaining credits and reopen already-unlocked reports on another device while retained. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
         ['What is the plain-language contract guide?','Every paid report includes a source-linked reading guide: simpler wording for common legal phrases, topic explanations, exact money and time wording, legal-word definitions and questions to ask. Original wording stays beside the explanation. It covers extracted text, not unreadable sections or missing attachments. Unrecognised wording and cross-references are marked for closer reading. The guide does not require optional AI insights.'],
         ['What do I get for free?','Your risk score, risk level, document type, and analysis of the first 3 flagged issues. You can also see the titles of remaining flags. The plain-language guide, full recommendations, impact notes, and PDF export require an unlock.'],
         ['Is this legal advice?','No. ContractCheck provides automated risk triage. Results may be incomplete or incorrect. We explain wording as a reading aid, do not draft replacement clauses, and do not replace a qualified attorney.'],

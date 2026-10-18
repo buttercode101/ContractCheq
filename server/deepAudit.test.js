@@ -3,7 +3,7 @@ for(const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN'])delete proce
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-deep-'));
 process.env.GROQ_API_KEY='test-only';process.env.PAYSTACK_SECRET_KEY='test-only';
 const app=require('./index'),store=require('./store');
-test('untrusted inputs, analytics failures and invented AI evidence cannot corrupt reports or credits',async()=>{
+test('untrusted inputs, analytics failures and invented AI evidence cannot corrupt reports or credits',async(t)=>{
  const server=app.listen(0);await new Promise(r=>server.once('listening',r));
  const base='http://127.0.0.1:'+server.address().port,realFetch=global.fetch,realTrack=store.track,realDurable=store.durable;
  const post=async(route,body)=>{const r=await realFetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,body:await r.json()};};
@@ -41,7 +41,20 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
   const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);assert.ok(full.body.plainLanguageGuide);
   assert.equal((await post('/api/unlock-analysis',{...unlock,reopenOnly:true})).status,200);
   assert.equal((await post('/api/unlock-analysis',unlock)).status,200);
-  assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);
+  await t.test('receipt recovery lists only owned retained reports without spending credits',async()=>{
+   const recovered=await post('/api/verify-payment',receipt);
+   assert.equal(recovered.status,200);assert.equal(recovered.body.credits,0);
+   assert.equal(recovered.body.reports.length,1);
+   assert.equal(recovered.body.reports[0].id,scan.body._id);
+   assert.equal(recovered.body.reports[0].title,full.body.docTitle);
+   assert.ok(recovered.body.reports[0].expiresAt>Date.now());
+   assert.deepEqual(Object.keys(recovered.body.reports[0]).sort(),['expiresAt','id','jurisdiction','title']);
+   const wrong=await post('/api/verify-payment',{...receipt,email:'other@example.test'});
+   assert.equal(wrong.status,403);assert.equal(wrong.body.reports,undefined);
+   const unrelated=await post('/api/verify-payment',{...receipt,reference:'CC-other-recovery-receipt'});
+   assert.equal(unrelated.body.credits,1);assert.deepEqual(unrelated.body.reports,[]);
+   assert.equal((await store.getGrant(receipt.reference)).remaining,0);
+  });
   for(const [product,credits] of [['pack3',3],['pack10',10]]){
    const r={reference:'CC-deep-'+product+'-receipt',email:'buyer@example.test'};
    assert.equal((await post('/api/verify-payment',r)).body.credits,credits);
@@ -49,6 +62,19 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
    assert.equal((await post('/api/unlock-analysis',{analysisId:scan.body._id,...r})).body.credits,credits-1);
    assert.equal((await post('/api/verify-payment',r)).body.credits,credits-1);
   }
+  await t.test('receipt recovery omits expired report metadata and refuses expired reopen',async()=>{
+   const savedFile=fs.readdirSync(process.env.DATA_DIR).find(f=>{
+    const item=JSON.parse(fs.readFileSync(path.join(process.env.DATA_DIR,f)));
+    return item.full?._id===scan.body._id;
+   });
+   assert.ok(savedFile);
+   const location=path.join(process.env.DATA_DIR,savedFile),saved=JSON.parse(fs.readFileSync(location));
+   saved.at=Date.now()-49*3600*1000;fs.writeFileSync(location,JSON.stringify(saved));
+   const recovered=await post('/api/verify-payment',receipt);
+   assert.equal(recovered.status,200);assert.equal(recovered.body.credits,0);assert.deepEqual(recovered.body.reports,[]);
+   assert.equal((await post('/api/unlock-analysis',{...unlock,reopenOnly:true})).status,404);
+   assert.equal((await store.getGrant(receipt.reference)).remaining,0);
+  });
   const home=await realFetch(base);assert.match(home.headers.get('content-security-policy'),/script-src 'self' 'sha256-/);
   assert.ok(!home.headers.get('content-security-policy').split(';').find(x=>x.trim().startsWith('script-src')).includes('unsafe-inline'));
  }finally{global.fetch=realFetch;store.track=realTrack;store.durable=realDurable;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}

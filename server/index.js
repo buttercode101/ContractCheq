@@ -403,8 +403,14 @@ app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {
     const customer=String(data.customer?.email||'').toLowerCase().trim();
     if(!customer||String(email||'').toLowerCase().trim()!==customer) return res.status(403).json({error:'Receipt email mismatch'});
     const grant=await store.saveGrant(reference,{email:customer,product:purchased,amount:Number(data.amount),credits:purchased==='pack10'?10:purchased==='pack3'?3:1});
+    // Receipt ownership is verified before disclosing any purchased report metadata.
+    // Listing does not use a credit and excludes expired analysis records.
+    const reports=(await Promise.all((grant.unlocked||[]).slice(0,10).map(async id=>{
+      const saved=await store.getAnalysis(id);
+      return saved?.full?{id,title:saved.full.docTitle||'Contract report',jurisdiction:saved.full.jurisdiction||'ZA',expiresAt:saved.at+48*3600*1000}:null;
+    }))).filter(Boolean);
     await trackSafely('payment_verified',{product:purchased,amount:Number(data.amount)});
-    res.json({ok:true,grantId:reference,product:purchased,credits:grant.remaining,email:customer,amount:Number(data.amount)});
+    res.json({ok:true,grantId:reference,product:purchased,credits:grant.remaining,email:customer,amount:Number(data.amount),reports});
   } catch(e) {next(e);}
 });
 
