@@ -65,6 +65,7 @@ test('does not attach property-entry advice to a tenant payment sentence', () =>
   const entry = buildPlainLanguageGuide('The landlord may enter the premises without notice. The processor may access personal data.');
   assert.ok(!entry.sections[0].topics.includes('ending'));
   assert.ok(!entry.sections[1].topics.includes('property'));
+  assert.ok(!buildPlainLanguageGuide('The tenant leaves early.').sections[0].topics.includes('work'));
 });
 
 test('document headings are identified without inventing operative obligations', () => {

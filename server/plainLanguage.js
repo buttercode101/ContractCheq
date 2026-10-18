@@ -31,7 +31,7 @@ const TOPICS = [
   ['ownership', 'Ownership of work and ideas', /intellectual property|copyright|\bIP\b|licen[cs]e|assign(?:ment|s)?|ownership/i,
     'This part concerns who owns something or who is allowed to use it. A right to use something is not necessarily ownership.',
     'Who owns existing work and new work? Does the other party get ownership or only permission to use it?'],
-  ['work', 'Work, time and restrictions', /\bwork(?:ing)?\b|overtime|hours|leave|probation|restraint|non[- ]compete/i,
+  ['work', 'Work, time and restrictions', /\bovertime\b|\bworking (?:hours|time|conditions|days)\b|\bhours(?: per| a) (?:week|day)\b|\b(?:annual|paid|sick|maternity|paternity|parental) leave\b|\bemployee\b.{0,80}\bleave\b|\bleave\b.{0,80}\bemployee\b|\bprobation\b|\brestraint\b|\bnon[- ]compete\b/i,
     'This part covers working conditions, time off, pay-related work duties, or limits on other work.',
     'What work and hours are expected, what time off is provided, and do any restrictions continue after leaving?'],
   ['property', 'Using and looking after property', /\b(?:entry|inspect\w*|repairs?|maintenance)\b|\b(?:enter|access)\b.{0,40}\b(?:premises|dwelling|property|home|house|flat|apartment)\b|\b(?:premises|dwelling|property)\b.{0,40}\baccess\b/i,
