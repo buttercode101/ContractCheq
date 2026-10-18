@@ -105,3 +105,11 @@ test('corrupt but valid-JSON browser storage is normalised before rendering',()=
   const saved=vm.runInContext('loadLS()',context);assert.ok(saved&&typeof saved==='object');assert.ok(!saved.email||typeof saved.email==='string');assert.ok(!saved.notes?.x);
  }
 });
+
+test('direct FAQ links resolve to populated pricing content and navigation updates history',()=>{
+ const script=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8').split('<script>').at(-1).split('</script>')[0];
+ const context={React:{createElement:()=>{},...Object.fromEntries(['useState','useEffect','useCallback','useRef'].map(k=>[k,()=>{}]))},ReactDOM:{createRoot:()=>({render(){}})},document:{getElementById:()=>({})}};
+ vm.createContext(context);vm.runInContext(script,context);
+ assert.equal(vm.runInContext("viewForPath('/faq')",context),'pricing');assert.equal(vm.runInContext("viewForPath('/privacy/')",context),'privacy');
+ assert.ok(script.includes("window.history.pushState({},'',pathname)"));assert.ok(script.includes("addEventListener('popstate',onBack)"));
+});

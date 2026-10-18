@@ -25,7 +25,7 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
   assert.equal(attempts.filter(Boolean).length,1);assert.equal((await store.getGrant('concurrent-single')).remaining,0);
   const scan=await post('/api/analyze-text',{text});assert.equal(scan.status,200);
   global.fetch=async(url,options)=>{
-   if(String(url).startsWith('https://api.paystack.co/')){assert.ok(options.signal);return {ok:true,json:async()=>({status:true,data:{status:'success',amount:1900,currency:'ZAR',customer:{email:'buyer@example.test'},metadata:{product:'single'}}})};}
+   if(String(url).startsWith('https://api.paystack.co/')){assert.ok(options.signal);const product=String(url).includes('pack10')?'pack10':String(url).includes('pack3')?'pack3':'single';return {ok:true,json:async()=>({status:true,data:{status:'success',amount:{single:1900,pack3:3900,pack10:9900}[product],currency:'ZAR',customer:{email:'buyer@example.test'},metadata:{product}}})};}
    if(String(url).startsWith('https://api.groq.com/')){assert.ok(options.signal);return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({extraIssues:[{excerpt:'This clause does not exist in the uploaded contract',analysis:'Invented risk',severity:'HIGH RISK'},{excerpt:'The tenant shall pay R8000 each month.',analysis:{bad:true}}]})}}]})};}
    return realFetch(url,options);
   };
@@ -39,6 +39,13 @@ test('untrusted inputs, analytics failures and invented AI evidence cannot corru
   const full=await post('/api/unlock-analysis',unlock);assert.equal(full.status,200);assert.equal(full.body.credits,0);assert.ok(full.body.plainLanguageGuide);
   assert.equal((await post('/api/unlock-analysis',unlock)).status,200);
   assert.equal((await post('/api/verify-payment',receipt)).body.credits,0);
+  for(const [product,credits] of [['pack3',3],['pack10',10]]){
+   const r={reference:'CC-deep-'+product+'-receipt',email:'buyer@example.test'};
+   assert.equal((await post('/api/verify-payment',r)).body.credits,credits);
+   assert.equal((await post('/api/unlock-analysis',{analysisId:scan.body._id,...r})).body.credits,credits-1);
+   assert.equal((await post('/api/unlock-analysis',{analysisId:scan.body._id,...r})).body.credits,credits-1);
+   assert.equal((await post('/api/verify-payment',r)).body.credits,credits-1);
+  }
   const home=await realFetch(base);assert.match(home.headers.get('content-security-policy'),/script-src 'self' 'sha256-/);
   assert.ok(!home.headers.get('content-security-policy').split(';').find(x=>x.trim().startsWith('script-src')).includes('unsafe-inline'));
  }finally{global.fetch=realFetch;store.track=realTrack;store.durable=realDurable;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}

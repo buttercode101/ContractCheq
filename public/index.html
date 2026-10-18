@@ -112,9 +112,11 @@ function PlainLanguageGuide({guide}) {
     h('p',{className:'guide-caveat'},guide.caveat));
 }
 
+function viewForPath(pathname){const p=(pathname||'/').replace(/^\/+|\/+$/g,'');return p==='faq'?'pricing':['privacy','terms','contact','pricing'].includes(p)?p:'landing';}
+
 function App() {
   const [ls] = useState(loadLS);
-  var _s = useState(function(){var p=(window.location.pathname||'/').replace(/^\/+|\/+$/g,'');return ['privacy','terms','contact','pricing','faq'].includes(p)?p:'landing';}); var view = _s[0]; var setView = _s[1];
+  var _s = useState(function(){return viewForPath(window.location.pathname);}); var view = _s[0]; var setView = _s[1];
   var _c = useState({paystackPublicKey: '', prices: {single: 1900, pack3: 3900, pack10: 9900}, maxFileMb: 4}); var config = _c[0]; var setConfig = _c[1];
   var _ok = useState('…'); var serverOk = _ok[0]; var setServerOk = _ok[1];
   var _j = useState('ZA'); var jurisdiction = _j[0]; var setJurisdiction = _j[1];
@@ -168,7 +170,8 @@ function App() {
     if(menuOpen)document.querySelector('#mobile-menu button')?.focus();
     return ()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',onKey);if(!suppressOverlayFocus.current)opener?.focus({preventScroll:true});suppressOverlayFocus.current=false;};
   },[!!checkout,menuOpen]);
-  function go(v){setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  function go(v){const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  useEffect(()=>{const onBack=()=>{setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
   function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
 
 
@@ -457,7 +460,7 @@ function App() {
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
       h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
-      h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>setView('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment'))),
+      h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment'))),
       h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
       h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
         ['How do report credits work?','Each credit unlocks one full report. Restore your Paystack reference and receipt email on the Pricing page to recover remaining credits on another device. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
@@ -476,7 +479,7 @@ function App() {
       h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results, including extracted wording in the reading guide, are stored privately for up to 48 hours so you can unlock them after payment. Expired records are removed by the daily cleanup. Private notes are saved in your browser on this device.'),
       h('p', null, 'If you enable AI enrichment, text excerpts are sent to Groq and/or TinyFish under their terms. Disable AI enrichment to keep analysis on our rules engine only.'),
       h('p', null, 'Payments are processed by Paystack. We receive payment confirmation, not your full card number.'),
-      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+      h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
   }
 
@@ -487,7 +490,7 @@ function App() {
       h('p', null, 'We explain common contract wording and identify potential issues. The reading guide is not a replacement contract, a complete legal review or a decision about enforceability. We do not draft replacement clauses for you.'),
       h('p', null, 'Results may be incomplete or incorrect. Always consult a qualified attorney for decisions that matter.'),
       h('p', null, 'Pricing: digital delivery after Paystack verification. Refunds case-by-case if unlock fails after successful payment (provide reference).'),
-      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+      h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
   }
 
@@ -497,7 +500,7 @@ function App() {
       h('p', {className: 'document-copy'}, 'Support & payment issues'),
       h('p', {className: 'document-copy'}, 'Email buttercode101@gmail.com if a successful payment does not unlock your report. Keep your payment reference and receipt email so the payment can be traced.'),
       h('p', {className: 'document-copy'}, 'Include your Paystack reference for payment problems.'),
-      h('button', {onClick: function() { setView('landing'); }, className: 'text-button'}, '← Back')
+      h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
   }
 
