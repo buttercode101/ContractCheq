@@ -62,7 +62,7 @@ body{background:radial-gradient(circle at 78% 4%,rgba(15,98,77,.045),transparent
 .priority-actions{margin-top:20px;border-top:1px solid #e2e5df;padding-top:18px}
 .priority-actions h3{margin:0 0 12px;font-size:1rem}
 .priority-action{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:12px 0;border-top:1px solid #eef0eb}
-.priority-action>span{font-variant-numeric:tabular-nums;color:#737c70;font-size:.8rem;padding-top:2px}
+.priority-action>span{font-variant-numeric:tabular-nums;color:#626b60;font-size:.8rem;padding-top:2px}
 .priority-action strong{display:block;margin-bottom:4px}.priority-action p{margin:0;color:#4d554c;line-height:1.5}
 @media(max-width:700px){.decision-brief{padding:18px;margin:18px 0}.decision-grid{grid-template-columns:1fr}.decision-brief h2{font-size:1.45rem}}
 
