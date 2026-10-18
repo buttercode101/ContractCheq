@@ -10,7 +10,7 @@ const TOPICS = [
   ['deposit', 'Deposit and refund', /deposit|refund|deduction/i,
     'This part covers money held or returned, and any conditions for keeping or paying it back.',
     'When is the money returned, what can be deducted, and what proof is needed?'],
-  ['money', 'Payments and extra costs', /\bpay(?:ment|able|s)?\b|rent\b|salary|remuneration|fee|charge|interest|penalt|invoice|cost/i,
+  ['money', 'Payments and extra costs', /\b(?:payments?|payable|pays?|paid|rent|salary|remuneration|fees?|charges?|interest|penalt(?:y|ies)|invoices?|costs?)\b/i,
     'This part covers money someone must pay, money they receive, or extra costs that may apply.',
     'Who pays whom, how much, by which date, and are there extra fees or increases?'],
   ['guarantee', 'Personal responsibility for someone else', /surety|guarant|co[- ]principal|joint(?:ly)? and several/i,
@@ -31,10 +31,10 @@ const TOPICS = [
   ['ownership', 'Ownership of work and ideas', /intellectual property|copyright|\bIP\b|licen[cs]e|assign(?:ment|s)?|ownership/i,
     'This part concerns who owns something or who is allowed to use it. A right to use something is not necessarily ownership.',
     'Who owns existing work and new work? Does the other party get ownership or only permission to use it?'],
-  ['work', 'Work, time and restrictions', /employee|overtime|hours|leave|probation|restraint|non[- ]compete/i,
+  ['work', 'Work, time and restrictions', /\bwork(?:ing)?\b|overtime|hours|leave|probation|restraint|non[- ]compete/i,
     'This part covers working conditions, time off, pay-related work duties, or limits on other work.',
     'What work and hours are expected, what time off is provided, and do any restrictions continue after leaving?'],
-  ['property', 'Using and looking after property', /landlord|tenant|premises|dwelling|inspect|repair|maintenan|access/i,
+  ['property', 'Using and looking after property', /\b(?:entry|inspect\w*|repairs?|maintenance|access)\b|\benter\b.{0,40}\b(?:premises|dwelling|property|home|house|flat|apartment)\b/i,
     'This part covers using, entering, inspecting or looking after property.',
     'Who can enter, who must fix or pay for problems, and how are condition and repairs recorded?'],
   ['disputes', 'Disagreements and where to resolve them', /arbitrat|jurisdiction|governing law|court|dispute|mediat/i,
@@ -106,6 +106,11 @@ function buildPlainLanguageGuide(text, docType = 'Contract') {
   const selected = all.slice(0, 400);
   const sections = selected.map((original, index) => {
     const matches = TOPICS.filter(([, , pattern]) => pattern.test(original));
+    if (!matches.length && original.length < 120 && /\b(?:agreement|contract|offer)\b/i.test(original) && !/\b(?:shall|must|may|will|agrees?|hereby)\b/i.test(original)) {
+      matches.push(['heading', 'Agreement heading', null,
+        'This is a document heading. It names the kind of agreement; the wording below sets out the actual promises and conditions.',
+        'Are the parties, agreement type and included attachments the ones you expect?']);
+    }
     const glossary = TERMS.filter(([, pattern]) => pattern.test(original)).map(([term, , meaning]) => ({ term, meaning }));
     let simplerWording = original;
     for (const [pattern, replacement] of REPLACEMENTS) simplerWording = simplerWording.replace(pattern, replacement);

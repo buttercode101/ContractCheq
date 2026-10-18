@@ -57,3 +57,16 @@ test('written-number notice periods are surfaced without conversion', () => {
   assert.ok(guide.sections[0].timeTerms.includes('two weeks'));
   assert.ok(guide.sections[1].timeTerms.includes('monthly'));
 });
+
+test('does not attach property-entry advice to a tenant payment sentence', () => {
+  const guide = buildPlainLanguageGuide('The tenant shall pay R8000 monthly. The employee shall keep information confidential.');
+  assert.ok(!guide.sections[0].topics.includes('property'));
+  assert.ok(!guide.sections[1].topics.includes('work'));
+});
+
+test('document headings are identified without inventing operative obligations', () => {
+  const guide = buildPlainLanguageGuide('RESIDENTIAL LEASE AGREEMENT.');
+  assert.equal(guide.sections[0].title, 'Agreement heading');
+  assert.equal(guide.sections[0].needsReview, false);
+  assert.ok(!guide.checklist.find(item => item.title === 'Payments and extra costs').found);
+});
