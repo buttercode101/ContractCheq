@@ -42,7 +42,8 @@ function loadLS() {
     return {credits:Number.isInteger(value.credits)&&value.credits>=0?value.credits:0,
       unlocked:Array.isArray(value.unlocked)?value.unlocked.filter(x=>typeof x==='string'):[],
       email:typeof value.email==='string'?value.email:'',paymentRef:typeof value.paymentRef==='string'?value.paymentRef:'',pendingReceipt:typeof value.pendingReceipt==='string'?value.pendingReceipt:'',
-      notes:value.notes&&typeof value.notes==='object'&&!Array.isArray(value.notes)?Object.fromEntries(Object.entries(value.notes).filter(([,v])=>typeof v==='string')):{}};
+      notes:value.notes&&typeof value.notes==='object'&&!Array.isArray(value.notes)?Object.fromEntries(Object.entries(value.notes).filter(([,v])=>typeof v==='string')):{},
+      lastPaidReport:value.lastPaidReport&&['analysisId','reference','email'].every(k=>typeof value.lastPaidReport[k]==='string'&&value.lastPaidReport[k].length>0&&value.lastPaidReport[k].length<300)?value.lastPaidReport:null};
   } catch (e) { return {}; }
 }
 function saveLS(p) {
@@ -191,6 +192,26 @@ function App() {
   function go(v){cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
   useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
   function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
+  function rememberPaidReport(full,reference,email){
+    setStorageError(!saveLS({lastPaidReport:{analysisId:full._id,reference,email}}));
+  }
+  async function reopenPaidReport(){
+    const saved=loadLS().lastPaidReport;
+    if(!saved||unlocking)return;
+    const current=beginReportRequest();setUnlocking(true);setError('');
+    try{
+      const response=await fetch(API+'/api/unlock-analysis',{method:'POST',headers:{'Content-Type':'application/json'},signal:current.controller.signal,body:JSON.stringify({...saved,reopenOnly:true})});
+      const full=await response.json();
+      if(reportRequest.current!==current||current.controller.signal.aborted)return;
+      if(!response.ok||!full.isPaid){if(response.status===404)saveLS({lastPaidReport:null});throw new Error(full.error||'Could not reopen this report.');}
+      setResult(full);setCredits(full.credits||0);setPaymentRef(saved.reference);setPayEmail(saved.email);setUnlocked(u=>[...new Set([...u,full._id])]);
+      if(window.location.pathname!=='/')window.history.pushState({},'','/');setView('result');
+    }catch(e){if(reportRequest.current===current)setError(current.timedOut?'Reopening took too long. Check your connection and try again.':e.message||'Could not reopen this report.');}
+    finally{setUnlocking(false);finishReportRequest(current);}
+  }
+  function savedReportRecovery(){
+    return loadLS().lastPaidReport&&h('section',{className:'receipt-recovery','aria-label':'Saved paid report'},h('h2',null,'Return to your report'),h('p',null,'Reopen the last report unlocked on this device while it is retained for up to 48 hours. This uses no additional credit. Contract text is not saved in this browser shortcut.'),h('button',{className:'secondary-button',type:'button',disabled:unlocking,onClick:reopenPaidReport},unlocking?'Reopening report…':'Reopen last unlocked report'));
+  }
 
 
   var isUnlocked = result && (result.isPaid === true || result.isDemo === true);
@@ -291,6 +312,7 @@ function App() {
               body: JSON.stringify({analysisId: result._id, reference: response.reference, email})
             }).then(r=>r.json());
             if(full.error) throw new Error(full.error);
+            rememberPaidReport(full,response.reference,email);
             setResult(full);
             setCredits(full.credits||0);
             setUnlocked(u=>[...new Set([...u, result._id])]);
@@ -331,6 +353,7 @@ function App() {
         body: JSON.stringify({analysisId: result._id, reference:paymentRef, email: payEmail})
       }).then(r=>r.json());
       if(full.error){ if(full.error==='No report credits remaining'){setCredits(0);setPaymentRef('');} setError(full.error);window.scrollTo({top:0});return; }
+      rememberPaidReport(full,paymentRef,payEmail);
       setResult(full);
       setCredits(full.credits||0);
       setUnlocked(u=>[...new Set([...u, result._id])]);
@@ -412,6 +435,7 @@ function App() {
   let body;
   if(view==='landing'){
     body=h('section',{className:'landing'},
+      savedReportRecovery(),
       h('div',{className:'hero-grid'},
         h('div',{className:'hero-intro'},
           h('div',{className:'eyebrow'},h('span',{className:'eyebrow-dot'}),'Contract clarity, before the commitment'),
