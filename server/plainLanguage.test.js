@@ -73,3 +73,12 @@ test('document headings are identified without inventing operative obligations',
   assert.equal(guide.sections[0].needsReview, false);
   assert.ok(!guide.checklist.find(item => item.title === 'Payments and extra costs').found);
 });
+
+test('explains everyday consequences of refund and waiver wording while retaining conditions', () => {
+  const guide = buildPlainLanguageGuide('The deposit is non-refundable if the tenant leaves early. The employee waives no rights. No interest will accrue.');
+  assert.ok(guide.sections[0].simplerWording.includes('not paid back'));
+  assert.ok(guide.sections[0].simplerWording.includes('if the tenant leaves early'));
+  assert.ok(guide.sections[1].simplerWording.includes('gives up no rights'));
+  assert.ok(guide.sections[2].simplerWording.includes('No interest will build up'));
+  assert.ok(guide.glossary.find(term => term.term === 'non-refundable').meaning.includes('does not decide'));
+});

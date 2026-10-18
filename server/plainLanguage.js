@@ -49,6 +49,10 @@ const TOPICS = [
 ];
 
 const TERMS = [
+  ['non-refundable', /\bnon-refundable\b/i, 'The agreement says the money will not be paid back in the circumstances described. Read the conditions; this does not decide whether keeping it is legally allowed.'],
+  ['automatic renewal', /automat(?:ic|ically).{0,30}renew|renew.{0,30}automat(?:ic|ically)/i, 'The deal may continue for another period without a new signature if the stated conditions apply. Check how and when to stop it.'],
+  ['accrue', /\baccru(?:e|es|ed|ing)\b/i, 'Build up over time, often used for interest, leave or a right to payment.'],
+  ['statutory', /\bstatutory\b/i, 'Set out in legislation. The word alone does not tell you the amount, rule or whether it applies to this agreement.'],
   ['shall', /\bshall\b/i, 'Usually introduces a requirement: read it as “must”. Keep any “not”, conditions and exceptions.'],
   ['may', /\bmay\b/i, 'Can indicate permission or a possibility. It does not by itself mean something must happen.'],
   ['indemnity', /indemn(?:ity|ify|ifies|ified)/i, 'An agreement about covering losses or claims. Check whose losses, which events and any limits.'],
@@ -80,6 +84,10 @@ const REPLACEMENTS = [
   [/\btermination\b/gi, 'ending the agreement'], [/\bremuneration\b/gi, 'pay'],
   [/\butili[sz]e\b/gi, 'use'], [/\bper annum\b/gi, 'per year'],
   [/\bper calendar month\b/gi, 'each calendar month'], [/\bforthwith\b/gi, 'immediately'],
+  [/\bwaives\b/gi, 'gives up'], [/\bwaive\b/gi, 'give up'],
+  [/\baccrue\b/gi, 'build up'], [/\baccrues\b/gi, 'builds up'],
+  [/\bstatutory minimum\b/gi, 'minimum set by law'],
+  [/\bnon-refundable\b/gi, 'not refundable (not paid back)'],
 ];
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
 const unique = values => [...new Set(values)];
