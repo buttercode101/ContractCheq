@@ -1,0 +1,42 @@
+name: Cross-browser recovery verification
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - name: Install locked application dependencies
+        run: npm ci
+      - name: Install isolated browser test dependencies
+        run: npm install --prefix "$RUNNER_TEMP/contractcheck-browser-tools" --ignore-scripts playwright@1.62.1 @axe-core/playwright@4.14.0
+      - name: Install official browser and host dependencies
+        run: node "$RUNNER_TEMP/contractcheck-browser-tools/node_modules/playwright/cli.js" install --with-deps "${{ matrix.browser }}"
+      - name: Verify synthetic checkout and fresh-session recovery
+        run: node scripts/verify-recovery-browser.cjs fixed
+        env:
+          NODE_PATH: ${{ runner.temp }}/contractcheck-browser-tools/node_modules
+          BROWSER_TYPE: ${{ matrix.browser }}
+          BROWSER_EVIDENCE_DIR: artifacts/browser-${{ matrix.browser }}
+      - name: Retain synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: contractcheck-${{ matrix.browser }}
+          path: artifacts/browser-${{ matrix.browser }}
+          retention-days: 7
