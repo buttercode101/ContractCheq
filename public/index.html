@@ -81,12 +81,12 @@ function trapFocus(e) {
 function PlainLanguageGuide({guide}) {
   const [query,setQuery]=useState('');
   const [limit,setLimit]=useState(20);
-  if(!guide)return h('section',{className:'plain-guide'},h('h2',null,'Your contract, in everyday language'),h('p',null,'No reading guide was saved with this older report. Upload the current agreement for a new scan.'));
+  if(!guide)return h('section',{className:'plain-guide',id:'report-guide',tabIndex:-1},h('h2',null,'Your contract, in everyday language'),h('p',null,'No reading guide was saved with this older report. Upload the current agreement for a new scan.'));
   const sections=guide.sections||[];
   const filtered=sections.filter(s=>[s.original,s.title,s.explanation,...s.glossary.map(t=>t.term)].join(' ').toLowerCase().includes(query.toLowerCase().trim()));
   const amounts=sections.flatMap(s=>s.amounts.map(value=>({value,source:s.sourceLabel})));
   const timings=sections.flatMap(s=>s.timeTerms.map(value=>({value,source:s.sourceLabel})));
-  return h('section',{className:'plain-guide','aria-labelledby':'plain-guide-title'},
+  return h('section',{className:'plain-guide',id:'report-guide',tabIndex:-1,'aria-labelledby':'plain-guide-title'},
     h('div',{className:'eyebrow'},'Included in every paid report'),
     h('h2',{id:'plain-guide-title'},'Your contract, in everyday language'),
     h('p',{className:'guide-intro'},guide.overview),
@@ -432,8 +432,8 @@ function App() {
     return h('button',{type:'button',onClick:()=>openDemo(key),className:'example-card','aria-label':'Explore '+title+' example report'},
       h('div',{className:'example-top'},h('span',{className:'example-icon'},h(Icon,{name:key==='employment'?'briefcase':'document',size:22})),h('span',{className:'example-region'},d.jurisdiction==='UK'?'UK':'South Africa')),
       h('h3',null,title),h('p',null,blurb),
-      h('div',{className:'example-bottom'},h('span',{className:'example-score'},h('strong',null,'Live'),h('span',null,' current rule-engine report')),h(Icon,{name:'arrow'})),
-      h('span',{className:'example-link'},'Explore report'));
+      h('div',{className:'example-bottom'},h('span',{className:'example-link'},'Explore report'),h(Icon,{name:'arrow'})),
+      null);
   }
   let body;
   if(view==='landing'){
@@ -471,9 +471,10 @@ function App() {
     body=h('section',{className:'report-content'},
       h('div',{className:'report-toolbar'},h('button',{className:'text-button',onClick:()=>go('landing')},h(Icon,{name:'back',size:18}),'New scan'),h('span',{className:'rule-label'},region+' rule pack'),
         isUnlocked?h('button',{onClick:exportPdf,className:'primary-button'},h(Icon,{name:'download',size:17}),'Export PDF'):h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},h(Icon,{name:'lock',size:16}),unlocking?'Unlocking…':credits>0?'Use a credit':'Full report · R19')),
+      h('nav',{className:'report-sections','aria-label':'Report sections'},[['report-overview','Overview'],...(isUnlocked?[['report-guide','Reading guide']]:[]),['report-findings','Findings'],['report-notes','Your notes']].map(([id,label])=>h('button',{key:id,type:'button',onClick:()=>{const section=document.getElementById(id);section?.focus({preventScroll:true});section?.scrollIntoView({block:'start',behavior:'instant'});}},label))),
       result.isDemo&&h('div',{className:'example-banner'},h(Icon,{name:'document',size:19}),h('p',null,h('strong',null,'Example report. '),'Generated now by the same rule engine used for uploaded contracts. Download the sample below if you want to verify it yourself.')),
-      h('div',{className:'report-summary'},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract'),
-        h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated')))),h(Gauge,{score:result.score,level:result.level}),
+      h('div',{className:'report-summary',id:'report-overview',tabIndex:-1},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract')),
+        h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated'))),h(Gauge,{score:result.score,level:result.level}),
         h('p',{className:'score-explainer'},'A higher score means more potential risk. This is an automated assessment, not a legal conclusion.'),
         result.decision&&h('section',{className:'decision-brief'},h('div',{className:'eyebrow'},'Bottom line'),h('h2',null,result.decision),h('div',{className:'decision-grid'},
           h('div',null,h('span',null,'Priority issues'),h('strong',null,String(result.criticalCount||0)+' critical/high')),
@@ -483,7 +484,7 @@ function App() {
         result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
       !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock your plain-language contract guide, every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
       isUnlocked&&h(PlainLanguageGuide,{guide:result.plainLanguageGuide}),
-      h('div',{className:'findings-heading'},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
+      h('div',{className:'findings-heading',id:'report-findings',tabIndex:-1},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
       h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
         h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),
         h('div',{className:'finding-body'},m.source==='groq'&&h('span',{className:'ai-tag'},'AI-suggested'),m.excerpt&&h('blockquote',null,h('span',{className:'content-label'},'From your contract'),h('p',null,m.excerpt)),
@@ -494,7 +495,7 @@ function App() {
             isUnlocked&&m.lawRef&&h('p',{className:'law-reference'},h(Icon,{name:'document',size:15}),m.lawRef))))),
         issues.length===0&&h('div',{className:'empty-findings'},h(Icon,{name:'document',size:26}),h('h3',null,'No flags found in this scan'),h('p',null,'The rule engine may not cover every clause. A qualified lawyer can help with important decisions.'))),
       (result.level==='High Risk'||result.score>=70)&&h('aside',{className:'legal-guidance'},h('div',{className:'guidance-icon'},h(Icon,{name:'shield',size:24})),h('div',null,h('h2',null,'A second opinion is a good next step.'),h('p',null,'This document has high-risk flags. Speak to a qualified lawyer before you sign.'),h('div',{className:'guidance-links'},h('a',{href:region==='UK'?'https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/find-a-solicitor':'https://www.lssa.org.za/',target:'_blank',rel:'noopener noreferrer',onClick:()=>track('attorney_referral_click',{jurisdiction:result.jurisdiction,score:result.score})},region==='UK'?'Find a UK solicitor':'Find an SA attorney',h(Icon,{name:'external',size:16})),h('a',{href:region==='UK'?'https://www.citizensadvice.org.uk/':'https://www.legal-aid.co.za/',target:'_blank',rel:'noopener noreferrer'},region==='UK'?'Citizens Advice':'Legal Aid SA',h(Icon,{name:'external',size:16}))))),
-      h('section',{className:'notes-card'},h('div',{className:'notes-heading'},h('div',null,h('h2',null,'Your notes'),h('p',null,storageError?'Browser storage is unavailable. Copy your notes before leaving.':'Saved on this device. Add questions to take to your lawyer.')),h(Icon,{name:'note',size:23})),h('label',{htmlFor:'private-notes',className:'sr-only'},'Private notes for this report'),h('textarea',{id:'private-notes',placeholder:'Questions to ask, clauses to discuss…',value:notes[result._id]||'',onChange:e=>{const v=e.target.value;setNotes(n=>({...n,[result._id]:v}));}})),
+      h('section',{className:'notes-card',id:'report-notes',tabIndex:-1},h('div',{className:'notes-heading'},h('div',null,h('h2',null,'Your notes'),h('p',null,storageError?'Browser storage is unavailable. Copy your notes before leaving.':'Saved on this device. Add questions to take to your lawyer.')),h(Icon,{name:'note',size:23})),h('label',{htmlFor:'private-notes',className:'sr-only'},'Private notes for this report'),h('textarea',{id:'private-notes',placeholder:'Questions to ask, clauses to discuss…',value:notes[result._id]||'',onChange:e=>{const v=e.target.value;setNotes(n=>({...n,[result._id]:v}));}})),
       h('div',{className:'report-footnote'},h('p',null,'Check & flag only. We do not give legal advice or rewrite clauses.'),h('details',null,h('summary',null,'Report details',h(Icon,{name:'chevron',size:15})),h('p',null,'Rule version: '+(result.rulesVersion||'Not supplied')))));
   }
   if(view==='pricing'){
