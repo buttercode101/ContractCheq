@@ -13,6 +13,7 @@ if(out.mode==='fixed'){assert.equal(out.reopenButtons,1);await matrix(q,'receipt
 // A fresh entry context is required: returning paid users intentionally see report recovery first.
 { const q=await (await b.newContext({viewport:{width:390,height:844}})).newPage();
 q.on('pageerror',e=>out.errors.push(e.message));
+await q.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Provider is isolated in this synthetic layout context, as in the recovery context. */'}));
 // Shared reading/upload/pricing layout regression, using rendered app interactions.
 await q.goto(base,{waitUntil:'domcontentloaded'});await q.locator('.upload-panel').waitFor();await matrix(q,'landing');
 const upload=await q.locator('.upload-label').boundingBox();assert(upload.y+upload.height<844,'Upload must fit the initial 390px phone viewport');
