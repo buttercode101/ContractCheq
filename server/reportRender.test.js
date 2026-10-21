@@ -60,7 +60,7 @@ test('paid report renders every finding, recommendation, impact and PDF action',
     assert.ok(html.includes(required), `missing paid report content: ${required}`);
   assert.ok(!html.includes('Unlock report'));
   assert.ok(html.includes('Your contract, in everyday language'));
-  for(const text of ['Confirm deposit records','30 days','Text section 1','before termination']) assert.ok(html.includes(text));
+  for(const text of ['Checklist &amp; dates','tenant review','Confirm deposit records','30 days','Text section 1','before termination']) assert.ok(html.includes(text));
   assert.ok(html.includes('Original wording'));
   assert.ok(html.includes('Find wording in your contract'));
 });

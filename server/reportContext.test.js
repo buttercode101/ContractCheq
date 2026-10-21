@@ -37,3 +37,15 @@ test('free preview admits only approved fields, even when new paid fields are ad
  for(const issue of view.issues) for(const key of ['recommendation','impact','suggestedLanguage','futurePaidField']) assert.equal(issue[key],undefined,key);
  assert.ok(full.reportContext.questions.length);assert.ok(full.plainLanguageGuide);
 });
+
+test('written dates and periods preserve exact wording and reject impossible dates',()=>{
+ const original='Starts 21 October 2026. Leap date 29 February 2028. Invalid 29 February 2026 and 31 April 2026. Give eight weeks notice, twenty-one days for review, and allow 1.5 months for delivery.';
+ const result=reportContext({sections:[{sourceLabel:'Text section 1',original}]},'Lease','tenant');
+ assert.deepEqual(result.dates.map(d=>d.text),['21 October 2026','29 February 2028','eight weeks','twenty-one days','1.5 months']);
+ assert.deepEqual(result.dates.map(d=>d.kind),['date','date','period','period','period']);
+ for(const item of result.dates)assert.ok(item.context.includes(item.text));
+});
+test('date extraction stays bounded on repetitive documents',()=>{
+ const sections=Array.from({length:100},(_,i)=>({sourceLabel:'Text section '+i,original:'Give '+(i+1)+' days notice.'}));
+ const result=reportContext({sections},'Lease','tenant');assert.equal(result.dates.length,30);assert.match(result.dateNote,/not a complete/);
+});
