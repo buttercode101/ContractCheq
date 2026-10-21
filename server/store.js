@@ -1,4 +1,3 @@
-/** Private durable storage; optimistic concurrency protects report credits. */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -24,9 +23,12 @@ async function writeObject(name,value,etag,create=false) {
     contentType:'application/json',allowOverwrite:!create,...(etag?{ifMatch:etag}:{})});
   if(process.env.VERCEL) throw new Error('Private storage is not connected yet.');
   ensure(); const p=path.join(ROOT,digest(name)+'.json');
-  // Synchronous compare-and-write keeps concurrent requests in this local process safe.
-  if(etag && digest(fs.readFileSync(p,'utf8'))!==etag) throw Object.assign(new Error('ETag mismatch'),{code:'PRECONDITION_FAILED'});
-  fs.writeFileSync(p,JSON.stringify(value),{flag:create?'wx':'w'});
+  if (etag) {
+    if (!fs.existsSync(p)) throw Object.assign(new Error('ETag mismatch'), { code: 'PRECONDITION_FAILED' });
+    const existing = fs.readFileSync(p, 'utf8');
+    if (digest(existing) !== etag) throw Object.assign(new Error('ETag mismatch'), { code: 'PRECONDITION_FAILED' });
+  }
+  fs.writeFileSync(p, JSON.stringify(value), { flag: create ? 'wx' : 'w' });
 }
 const conflict=e=>e.code==='EEXIST'||/already exists|precondition|etag/i.test(e.message||e.name);
 async function saveAnalysis(id,full) { await writeObject(key('analyses',id),{full,at:Date.now()},null,true); }
@@ -40,12 +42,23 @@ async function getAnalysis(id) {
   return r.value;
 }
 async function saveGrant(reference,data) {
-  const name=key('grants',reference);
-  try { await writeObject(name,{...data,remaining:data.credits,unlocked:[],at:Date.now()},null,true); }
+  const normalized = String(reference || '').trim();
+  if (!normalized) throw new Error('Missing payment reference');
+  const name = key('grants', normalized);
+  const existing = await getGrant(normalized);
+  const email = String(data?.email || '').toLowerCase().trim();
+  if (existing && existing.email && email && existing.email !== email) {
+    throw Object.assign(new Error('Receipt already belongs to a different email address.'), { status: 409 });
+  }
+  try { await writeObject(name,{...data,remaining:data.credits,unlocked:existing?.unlocked || [],at:Date.now()},existing ? existing._etag || null : null, !existing); }
   catch(e) { if(!conflict(e)) throw e; }
-  return getGrant(reference);
+  return getGrant(normalized);
 }
-async function getGrant(reference) { return (await readObject(key('grants',reference)))?.value || null; }
+async function getGrant(reference) {
+  const grant = (await readObject(key('grants', reference)))?.value || null;
+  if (!grant) return null;
+  return { ...grant, _etag: (await readObject(key('grants', reference))).etag };
+}
 async function useCredit(reference,analysisId) {
   const name=key('grants',reference);
   for(let i=0;i<5;i++) {
@@ -67,7 +80,7 @@ async function track(name,props={}) {
     if(allowed[k].includes(props[k])) safe[k]=props[k];
   }
   for (const k of ['issues','score','amount']) if(typeof props[k]==='number'&&Number.isFinite(props[k])) safe[k]=props[k];
-  const eventNames=['page_view','demo_open','upload_start','analysis_view','analyze_error','paywall_click','pay_close','export_pdf','attorney_referral_click','payment_verified','analyze_complete','analyze_text','unlock_success'];
+  const eventNames=['page_view','demo_open','upload_start','analysis_view','analyze_error','paywall_click','pay_close','export_pdf','attorney_referral_click','payment_verified','analyze_complete','unlock_success','analyze_text','other'];
   const event={name:eventNames.includes(name)?name:'other',props:safe,at:Date.now()};
   // Production-readable telemetry without exposing contract text, filenames, email or payment references.
   console.info('[telemetry]', JSON.stringify(event));
