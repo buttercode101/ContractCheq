@@ -84,31 +84,20 @@ async function saveGrant(reference, data) {
   const normalized = normaliseReference(reference);
   if (!normalized) throw new Error('Missing payment reference');
 
-  const existing = await getGrant(normalized);
-  if (existing) {
-    const existingEmail = String(existing.email || '').toLowerCase().trim();
-    const incomingEmail = String(data?.email || '').toLowerCase().trim();
-    if (existingEmail && incomingEmail && existingEmail !== incomingEmail) {
-      throw Object.assign(new Error('Receipt already belongs to a different email address.'), { status: 409 });
-    }
-    if (data?.product && existing.product && existing.product !== data.product) {
-      throw Object.assign(new Error('Receipt already belongs to a different product.'), { status: 409 });
-    }
-
-    const merged = {
-      ...existing,
-      ...data,
-      remaining: typeof data?.credits === 'number' ? data.credits : existing.remaining,
-      unlocked: Array.isArray(existing.unlocked) ? existing.unlocked : [],
-      at: Date.now(),
-    };
-    await writeObject(key('grants', normalized), merged, null, false);
-    return merged;
+  const name = key('grants', normalized);
+  // A verified transaction creates a grant once. Replays must never overwrite
+  // remaining credits or a concurrent unlock's ledger.
+  try {
+    await writeObject(name, { ...data, remaining: data.credits, unlocked: [], at: Date.now() }, null, true);
+  } catch (error) {
+    if (!conflict(error)) throw error;
   }
-
-  const grant = { ...data, remaining: data.credits, unlocked: [], at: Date.now() };
-  await writeObject(key('grants', normalized), grant, null, true);
-  return grant;
+  const existing = await getGrant(normalized);
+  if (!existing) throw new Error('Payment receipt could not be saved.');
+  if (String(existing.email || '').toLowerCase().trim() !== String(data.email || '').toLowerCase().trim() || existing.product !== data.product) {
+    throw Object.assign(new Error('Receipt already belongs to a different purchase.'), { status: 409 });
+  }
+  return existing;
 }
 
 async function useCredit(reference, analysisId) {

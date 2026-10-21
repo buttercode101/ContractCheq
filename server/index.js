@@ -59,6 +59,116 @@ function cleanup(filePath) {
   }
 }
 
+async function extractFromPdf(filePath) {
+  // Keep PDF.js native Path2D compatible with its canvas renderer.
+  const graphics = require(require.resolve('@napi-rs/canvas', {paths:[path.dirname(require.resolve('pdf-parse'))]}));
+  globalThis.DOMMatrix = graphics.DOMMatrix;
+  globalThis.ImageData = graphics.ImageData;
+  globalThis.Path2D = graphics.Path2D;
+  const { PDFParse } = require('pdf-parse');
+  const parser = new PDFParse({data:fs.readFileSync(filePath),standardFontDataUrl:path.join(path.dirname(require.resolve('pdfjs-dist/package.json')),'standard_fonts/')});
+  try {
+    const data = await parser.getText();
+    const pages = data.total || 1;
+    const extractedPages = data.pages || [];
+    const scanned = extractedPages.filter(p => (p.text || '').replace(/\s/g,'').length < 30).map(p => p.num);
+    // OCR every image-only page, including mixed PDFs; never silently ignore later pages.
+    if (scanned.length > 3) throw Object.assign(new Error('This PDF has more than 3 scanned pages. Split it into files of up to 3 pages.'), {status:422});
+    let confidence = 0.9, blankPages = 0, ocrPages = 0;
+    const limitedPages=[];
+    if (scanned.length) {
+      const screenshots = await parser.getScreenshot({partial:scanned,desiredWidth:1600,imageDataUrl:false});
+      for (const image of screenshots.pages) {
+        const target = extractedPages.find(p => p.num === image.pageNumber);
+        const original=(target?.text||'').trim();
+        const bitmap=await graphics.loadImage(Buffer.from(image.data));
+        const canvas=graphics.createCanvas(bitmap.width,bitmap.height),ctx=canvas.getContext('2d');
+        ctx.drawImage(bitmap,0,0);
+        const pixels=ctx.getImageData(0,0,bitmap.width,bitmap.height).data;
+        let blank=true;
+        for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>16&&(pixels[i]<249||pixels[i+1]<249||pixels[i+2]<249)){blank=false;break;}
+        if(blank){
+          // Keep known text even if the renderer fails to paint its font.
+          if(original){limitedPages.push(image.pageNumber);confidence=Math.min(confidence,0.7);}
+          else {if(target)target.text='';blankPages++;}
+          continue;
+        }
+        ocrPages++;
+        const result = await extractFromImage(Buffer.from(image.data),12000);
+        confidence = Math.min(confidence, result.confidence);
+        if(result.text.length<30&&original){
+          if(target)target.text=original;
+          limitedPages.push(image.pageNumber);confidence=Math.min(confidence,0.7);continue;
+        }
+        if (target) target.text = original&&!result.text.replace(/\s+/g,' ').includes(original.replace(/\s+/g,' ')) ? original+'\n'+result.text : result.text;
+        if (result.text.length < 30) throw Object.assign(new Error('A scanned page could not be read. Upload a sharper scan or photo.'),{status:422});
+      }
+    }
+    const text = extractedPages.length ? extractedPages.map(p => p.text).join('\n\n').trim() : (data.text||'').trim();
+    return {text,pages,method:ocrPages?'pdf-ocr':'pdf-parse',confidence,
+      warning:[limitedPages.length?`Page(s) ${limitedPages.join(', ')} have limited readable text. Their text layer was kept; check signatures and images against the original.`:null,blankPages?`${blankPages} visually blank page(s) skipped.`:null,confidence<0.75?'Some text may be unclear. Verify the extracted clauses against your original document.':null].filter(Boolean).join(' ')||null};
+  } catch (error) {
+    if (error.status) throw error;
+    throw Object.assign(new Error('This PDF could not be read. It may be damaged or password-protected. Upload an unlocked PDF or a clear photo.'), {status:422});
+  } finally {await parser.destroy();}
+}
+
+async function extractFromImage(filePath, timeoutMs = 35000) {
+  const Tesseract=require('tesseract.js');
+  let worker, timer;
+  const work=(async()=> {
+    worker=await Tesseract.createWorker('eng',1,{
+      cachePath:'/tmp',
+      langPath:path.join(path.dirname(require.resolve('@tesseract.js-data/eng/package.json')),'4.0.0_best_int'),
+      workerPath:require.resolve('tesseract.js/src/worker-script/node/index.js'),
+      logger:()=>{}
+    });
+    const graphics=require('@napi-rs/canvas');
+    let input=filePath;
+    try {let image;
+      const bytes=Buffer.isBuffer(filePath)?filePath:fs.readFileSync(filePath);
+      if(bytes.subarray(0,4).equals(Buffer.from([0x49,0x49,0x2a,0]))||bytes.subarray(0,4).equals(Buffer.from([0x4d,0x4d,0,0x2a]))){
+        const UTIF=require('utif'),pages=UTIF.decode(bytes);
+        if(pages.length!==1) throw Object.assign(new Error('Upload a single-page TIFF or convert multiple pages to PDF.'),{status:422});
+        const page=pages[0];if(!page.t256?.[0]||!page.t257?.[0]||page.t256[0]*page.t257[0]>25000000) throw Object.assign(new Error('Image is too large or invalid. Resize it below 25 megapixels.'),{status:422});
+        UTIF.decodeImage(bytes,page);const rgba=UTIF.toRGBA8(page);
+        image=graphics.createCanvas(page.width,page.height);image.getContext('2d').putImageData(new graphics.ImageData(new Uint8ClampedArray(rgba),page.width,page.height),0,0);
+      }else image=await graphics.loadImage(bytes);
+      if(image.width*image.height>25000000) throw Object.assign(new Error('Image is too large. Resize it below 25 megapixels.'),{status:422});
+      const canvas=graphics.createCanvas(image.width,image.height);const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,image.width,image.height);ctx.drawImage(image,0,0);input=canvas.toBuffer('image/png');
+    } catch(error) {if(error.status) throw error;throw Object.assign(new Error('This image could not be read. Try a clear PNG, JPG or WebP photo.'),{status:422});}
+    const result=await worker.recognize(input);
+    const text=(result.data?.text||'').trim();
+    return {text,pages:1,method:'tesseract',confidence:(result.data?.confidence||0)/100,
+      warning:text.length<30?'OCR returned little text. Try a sharper photo.':null};
+  })();
+  try {
+    return await Promise.race([work,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('Image recognition timed out. Try a smaller, sharper photo.'),{status:422})),timeoutMs);})]);
+  } finally {clearTimeout(timer);if(worker) await worker.terminate();}
+}
+
+function decodeText(buffer) {
+  if (buffer[0]===0xff && buffer[1]===0xfe) return buffer.subarray(2).toString('utf16le');
+  if (buffer[0]===0xfe && buffer[1]===0xff) {
+    const copy=Buffer.from(buffer.subarray(2));if(copy.length%2) throw Object.assign(new Error('Invalid UTF-16 text file.'),{status:422});
+    return copy.swap16().toString('utf16le');
+  }
+  return buffer.toString('utf8').replace(/^\uFEFF/,'');
+}
+
+async function extractText(file) {
+  const name = (file.originalname || '').toLowerCase();
+  const mime = file.mimetype || '';
+  if (mime.includes('pdf') || name.endsWith('.pdf')) return extractFromPdf(file.path);
+  if (mime.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(name)) return extractFromImage(file.path);
+  if (mime.includes('text') || name.endsWith('.txt')) {
+    return { text: decodeText(fs.readFileSync(file.path)), pages: 1, method: 'plain-text', confidence: 1 };
+  }
+  // try pdf then image
+  try { return await extractFromPdf(file.path); } catch (_) {}
+  return extractFromImage(file.path);
+}
+
 function redactSensitiveText(text, maxChars = AI_ENRICHMENT_MAX_CHARS) {
   if (!text) return '';
   let value = String(text)
@@ -83,6 +193,7 @@ async function callOpenRouter(messages, modelOverride = OPENROUTER_MODEL) {
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
+      signal: AbortSignal.timeout(12000),
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
@@ -92,11 +203,10 @@ async function callOpenRouter(messages, modelOverride = OPENROUTER_MODEL) {
       body: JSON.stringify({ model: modelOverride || OPENROUTER_MODEL, messages, temperature: 0.2, max_tokens: 1600, response_format: { type: 'json_object' } })
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`OpenRouter request failed (${res.status}): ${text || res.statusText}`);
+      throw new Error(`OpenRouter request failed (${res.status})`);
     }
     const j = await res.json();
-    return { content: j.choices?.[0]?.message?.content || '', model: modelOverride || OPENROUTER_MODEL };
+    return { content: j.choices?.[0]?.message?.content || '', model: modelOverride || OPENROUTER_MODEL, provider: 'openrouter' };
   } catch (e) {
     console.warn('OpenRouter', e.message);
     return null;
@@ -119,7 +229,7 @@ async function callGroq(messages) {
       });
       if (!res.ok) continue;
       const j = await res.json();
-      return { content: j.choices?.[0]?.message?.content || '', model: m };
+      return { content: j.choices?.[0]?.message?.content || '', model: m, provider: 'groq' };
     } catch (e) {
       console.warn('Groq', m, e.message);
     }
@@ -160,7 +270,7 @@ async function enrichWithLLM(analysis, rawText) {
 
   const safeText = redactSensitiveText(rawText, AI_ENRICHMENT_MAX_CHARS);
   let researchNote = null;
-  const snippets = await tinyfishSearch(`${analysis.jurisdiction || 'ZA'} ${analysis.docType || 'contract'} unfair terms ${analysis.issues?.[0]?.law || 'consumer employment tenancy'} ${safeText.slice(0, 500)}`);
+  const snippets = await tinyfishSearch(`${analysis.jurisdiction || 'ZA'} ${analysis.docType || 'contract'} unfair terms ${analysis.issues?.[0]?.law || 'consumer employment tenancy'}`);
   if (snippets?.length) {
     researchNote = snippets.map((s) => `${s.title}: ${s.snippet}`).join('\n');
     analysis.researchSources = snippets;
@@ -191,7 +301,7 @@ async function enrichWithLLM(analysis, rawText) {
         recommendation: field(e.recommendation) || '',
         impact: field(e.impact) || '',
         tags: ['AI'],
-        source: llm.model.includes('openrouter') ? 'openrouter' : 'groq',
+        source: llm.provider,
       }));
 
     const issues = [...analysis.issues, ...extra];
@@ -296,23 +406,54 @@ app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {
   } catch (e) { next(e); }
 });
 
-app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req,res)=> {
+app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
   try {
-    const text = fs.readFileSync(file.path, 'utf8');
-    if (!text || text.trim().length < 30) return res.status(422).json({ error: 'Could not extract enough text from this file.', hint: 'Try a text PDF or a clear photo (PNG/JPG).' });
+    const extracted = await extractText(file);
+
+    if (!extracted.text || extracted.text.trim().length < 30) {
+      return res.status(422).json({
+        error: 'Could not extract enough text from this file.',
+        hint: extracted.warning || 'Try a text PDF or a clear photo (PNG/JPG).',
+        method: extracted.method,
+      });
+    }
+
+    if (extracted.text.length > MAX_TEXT_CHARS) return res.status(413).json({error:'This document has too much text. Split it into documents under 200,000 characters.'});
+
     const jurisdiction = String(req.body?.jurisdiction || req.query.jurisdiction || 'ZA').toUpperCase();
-    if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({ error: 'Choose South Africa (ZA) or United Kingdom (UK).' });
-    let analysis = analyseContract(text, file.originalname || 'document', jurisdiction);
+    if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
+    let analysis = analyseContract(extracted.text, file.originalname || 'document', jurisdiction);
+    analysis.extraction = {
+      method: extracted.method,
+      pages: extracted.pages,
+      confidence: extracted.confidence,
+      warning: extracted.warning || null,
+      chars: extracted.text.length,
+    };
     analysis._id = `scan-${Date.now()}-${uuidv4()}`;
-    analysis.extraction = { method: 'plain-text', pages: 1, confidence: 1, chars: text.length };
     analysis.isPaid = false;
-    if (req.body?.enrich === '1' || req.query.enrich === '1') analysis = await enrichWithLLM(analysis, text);
+
+    if (req.body?.enrich === '1' || req.query.enrich === '1') {
+      analysis = await enrichWithLLM(analysis, extracted.text);
+    }
+
     await store.saveAnalysis(analysis._id, analysis);
-    await trackSafely('analyze_complete', { jurisdiction, method: 'plain-text', issues: analysis.issuesCount, score: analysis.score });
+    await trackSafely('analyze_complete', {
+      jurisdiction,
+      method: extracted.method,
+      issues: analysis.issuesCount,
+      score: analysis.score,
+    });
+
     res.json(freeViewOf(analysis));
-  } catch (err) { cleanup(file?.path); res.status(err.status || 500).json({ error: err.message || 'The service is temporarily unavailable. Please try again.' }); }
+  } catch (err) {
+    const status = Number(err?.status) || 500;
+    if (status >= 500) console.error('analyze', err);
+    res.status(status).json({ error: status >= 500 ? 'Analysis could not be saved. Please try again shortly.' : err.message });
+  } finally { cleanup(file?.path); }
 });
 
 app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
