@@ -145,6 +145,8 @@ function App() {
   const [restoring,setRestoring]=useState(false);
   const [recoveredReports,setRecoveredReports]=useState(null);
 
+  const [perspective,setPerspective] = useState('neutral');
+
   useEffect(function() {
     track('page_view', {});
     fetch(API + '/api/config').then(function(r) { return r.json(); }).then(function(c) {
@@ -241,6 +243,7 @@ function App() {
     var fd = new FormData();
     fd.append('file', file);
     fd.append('jurisdiction', jurisdiction);
+    fd.append('perspective', perspective);
     if (enrichLLM) fd.append('enrich', '1');
     setScanMsg(enrichLLM ? 'Reading your document and checking for risks…' : 'Checking your document for risks…');
     fetch(API + '/api/analyze', {method: 'POST', body: fd,signal:current.controller.signal})
@@ -271,7 +274,7 @@ function App() {
         track('analyze_error', {message: String(e.message || '').slice(0, 80)});
       })
       .finally(function() {finishReportRequest(current);});
-  }, [jurisdiction, enrichLLM, config.maxFileMb]);
+  }, [jurisdiction, perspective, enrichLLM, config.maxFileMb]);
 
   function onFile(e) {
     var f = e.target.files && e.target.files[0];
@@ -392,6 +395,15 @@ function App() {
     if(result.decision) line('BOTTOM LINE: '+result.decision, 11);
     if(result.confidence) line('COVERAGE: '+result.confidence, 8);
     if(result.exposure) line('MONEY AT STAKE: '+result.exposure, 9);
+    if(result.reportContext) {
+      line('YOUR REVIEW CHECKLIST ('+result.reportContext.perspective+')',14);
+      line(result.reportContext.roleNote,9);
+      result.reportContext.questions.forEach(q=>line('Ask: '+q,9));
+      line('DATES AND PERIODS IN CONTEXT',12);
+      line(result.reportContext.dateNote,8);
+      result.reportContext.dates.forEach(d=>{line(d.text+' | '+d.sourceLabel,10);line(d.context,9);});
+      if(!result.reportContext.dates.length)line('No supported dates or periods detected. Check the original contract.',9);
+    }
     if(result.plainLanguageGuide) {
       var guide=result.plainLanguageGuide;
       line('YOUR CONTRACT, IN EVERYDAY LANGUAGE',14);
@@ -450,6 +462,9 @@ function App() {
           h('div',{className:'panel-heading'},h('div',null,h('span',{className:'eyebrow'},'Start with a free scan'),h('h2',null,'Check your contract')),h('span',{className:'panel-icon'},h(Icon,{name:'document',size:25}))),
           h('p',{className:'field-label',id:'jurisdiction-label'},'Which rules apply?'),
           h('div',{className:'country-switch',role:'group','aria-labelledby':'jurisdiction-label'},['ZA','UK'].map(j=>h('button',{key:j,type:'button',disabled:scanning,'aria-pressed':jurisdiction===j,onClick:()=>setJurisdiction(j),className:jurisdiction===j?'selected':''},h('span',{className:'country-code'},j==='ZA'?'ZA':'UK'),h('span',null,j==='ZA'?'South Africa':'United Kingdom'),jurisdiction===j&&h(Icon,{name:'check',size:15})))),
+          h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'),
+          h('select',{id:'perspective',value:perspective,disabled:scanning,onChange:e=>setPerspective(e.target.value)},['neutral','tenant','landlord','employee','employer'].map(role=>h('option',{key:role,value:role},role==='neutral'?'General review':role.charAt(0).toUpperCase()+role.slice(1)))),
+          h('p',{className:'role-hint'},'Tailors questions in the full report. Your role does not change the risk score.'),
           h('div',{className:'drop-area'+(dragging?' dragging':''),onDragOver:e=>{e.preventDefault();if(!scanning)setDragging(true);},onDragLeave:()=>setDragging(false),onDrop:e=>{e.preventDefault();setDragging(false);if(!scanning)runFile(e.dataTransfer.files[0]);},'aria-busy':scanning},
             scanning?h('div',{role:'status','aria-live':'polite',className:'scan-status'},h('span',{className:'spinner'}),h('strong',null,scanMsg),h('p',null,'Keep this page open. Larger files may take a little longer.')):h(React.Fragment,null,
               h('span',{className:'upload-icon'},h(Icon,{name:'upload',size:25})),h('strong',{className:'drop-title'},'Your next signature starts here'),h('p',{className:'desktop-drop-copy'},'Drag your file here, or choose it below.'),
@@ -484,6 +499,8 @@ function App() {
         result.coverageWarning&&h('p',{className:'extraction-warning'},result.coverageWarning),result.extraction?.warning&&h('p',{className:'extraction-warning'},result.extraction.warning),result.llmEnriched&&h('p',{className:'enrichment-label'},'Optional AI insights included. AI findings are marked below.')),
       !result.isDemo&&(!isUnlocked||result._locked)&&h('div',{className:'unlock-banner'},h('div',null,h('h2',null,'See the whole picture.'),h('p',null,'Your first 3 flags are free. Unlock your plain-language contract guide, every recommendation, impact notes, and PDF export.')),h('button',{onClick:unlock,disabled:unlocking||serverOk!=='online',className:'primary-button'},unlocking?'Unlocking…':credits>0?'Use a report credit':'Unlock report · R19',h(Icon,{name:'arrow',size:17}))),
       isUnlocked&&h(PlainLanguageGuide,{guide:result.plainLanguageGuide}),
+      isUnlocked&&result.reportContext&&h('section',{className:'report-context'},h('h2',null,'Your review checklist'),h('p',null,result.reportContext.roleNote),result.reportContext.questions.length>0&&h('ul',null,result.reportContext.questions.map((q,i)=>h('li',{key:i},q))),h('h3',null,'Dates and periods in context'),h('p',null,result.reportContext.dateNote),result.reportContext.dates.length?h('ul',null,result.reportContext.dates.map((d,i)=>h('li',{key:i},h('strong',null,d.text+' · '+d.sourceLabel),h('blockquote',null,d.context)))):h('p',null,'No supported dates or periods detected. Check the original contract for deadlines.')),
+
       h('div',{className:'findings-heading',id:'report-findings',tabIndex:-1},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
       h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
         h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),

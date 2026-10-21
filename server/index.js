@@ -11,6 +11,7 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 const { analyseContract } = require('./riskEngine');
+const { validatePerspective } = require('./reportContext');
 const DEMO_SAMPLES = require('./demoSamples');
 const store = require('./store');
 
@@ -328,17 +329,12 @@ async function enrichWithLLM(analysis, rawText) {
 }
 
 function freeViewOf(analysis) {
+  const pick = (value, keys) => Object.fromEntries(keys.filter(key => value[key] !== undefined).map(key => [key, value[key]]));
   return {
-    ...analysis,
-    decision: undefined,
-    priorities: undefined,
-    plainLanguageGuide: undefined,
-    issues: analysis.issues.slice(0, 3).map(({ recommendation, impact, ...preview }) => preview),
-    exposure: undefined,
-    highlightedClauses: undefined,
-    issuesLocked: analysis.issues.slice(3).map((i) => ({ id: i.id, severity: i.severity, law: i.law, riskScore: i.riskScore, locked: true })),
-    issuesPreview: analysis.issues.map((i) => ({ id: i.id, severity: i.severity, law: i.law, riskScore: i.riskScore })),
-    rawText: undefined,
+    ...pick(analysis, ['_id','score','level','issuesCount','confidence','criticalCount','docTitle','docType','coverageWarning','rulesVersion','jurisdiction','extraction','llmEnriched']),
+    issues: analysis.issues.slice(0, 3).map(issue => pick(issue, ['id','severity','law','lawRef','riskScore','excerpt','analysis','tags','rawScore','source'])),
+    issuesLocked: analysis.issues.slice(3).map(i => ({id:i.id,severity:i.severity,law:i.law,riskScore:i.riskScore,locked:true})),
+    issuesPreview: analysis.issues.map(i => ({id:i.id,severity:i.severity,law:i.law,riskScore:i.riskScore})),
     freePreview: true,
     isPaid: false,
   };
@@ -425,7 +421,8 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
 
     const jurisdiction = String(req.body?.jurisdiction || req.query.jurisdiction || 'ZA').toUpperCase();
     if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
-    let analysis = analyseContract(extracted.text, file.originalname || 'document', jurisdiction);
+    const perspective = validatePerspective(req.body?.perspective ?? req.query.perspective);
+    let analysis = analyseContract(extracted.text, file.originalname || 'document', jurisdiction, perspective);
     analysis.extraction = {
       method: extracted.method,
       pages: extracted.pages,
@@ -465,7 +462,8 @@ app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
     if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({ error: 'Choose South Africa (ZA) or United Kingdom (UK).' });
     if (typeof text !== 'string' || text.trim().length < 30) return res.status(400).json({ error: 'Enter at least 30 characters of contract text.' });
     if (text.length > MAX_TEXT_CHARS) return res.status(413).json({ error: 'This document has too much text. Split it into documents under 200,000 characters.' });
-    const analysis = analyseContract(text, name, jurisdiction);
+    const perspective = validatePerspective(req.body?.perspective);
+    const analysis = analyseContract(text, name, jurisdiction, perspective);
     analysis._id = `local-${Date.now()}-${uuidv4()}`;
     analysis.extraction = { method: 'client-text', pages: 1, confidence: 1 };
     analysis.isPaid = false;
@@ -516,4 +514,4 @@ if (require.main === module) app.listen(PORT, () => {
 });
 
 module.exports = app;
-module.exports.__internal = { redactSensitiveText, externalAiEnabled };
+module.exports.__internal = { redactSensitiveText, externalAiEnabled, freeViewOf };
