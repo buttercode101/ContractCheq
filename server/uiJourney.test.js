@@ -28,26 +28,26 @@ test('saved paid-report reopen cannot spend a new credit or override later navig
  assert.deepEqual(JSON.parse(network.requests[0].options.body),{...saved.lastPaidReport,reopenOnly:true});
  ui.button('Pricing').props.onClick();assert.equal(network.requests[0].options.signal.aborted,true);
  network.requests[0].resolve({ok:true,json:async()=>({_id:'previous-report',isPaid:true,credits:0})});await pending;await settle();
- assert.equal(ui.state[1],'pricing');assert.equal(ui.state[15],null);
+ assert.equal(ui.state[1],'pricing');assert.equal(ui.state[16],null);
 });
 const response=name=>({ok:true,json:async()=>({...analyseContract('EMPLOYMENT AGREEMENT. The employee shall work 55 hours per week.',name),_id:name,isPaid:false,freePreview:true})});
 function deferredFetch(){const requests=[];return {requests,fetch(url,options){if(url==='/api/events')return Promise.resolve({ok:true,json:async()=>({})});return new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}));}};}
 
 test('leaving an upload page prevents its late response from replacing navigation',async()=>{
- const network=deferredFetch(),ui=browserJourney(network.fetch);ui.upload('first.txt');assert.equal(ui.state[6],true);
+ const network=deferredFetch(),ui=browserJourney(network.fetch);ui.upload('first.txt');assert.equal(ui.state[7],true);
  ui.button('Pricing').props.onClick();assert.equal(ui.state[1],'pricing');assert.equal(network.requests[0].options.signal.aborted,true);
  network.requests[0].resolve(response('first.txt'));await settle();
- assert.equal(ui.state[1],'pricing');assert.equal(ui.state[15],null);assert.equal(ui.state[6],false);
+ assert.equal(ui.state[1],'pricing');assert.equal(ui.state[16],null);assert.equal(ui.state[7],false);
 });
 test('the latest example wins even if an earlier response arrives last',async()=>{
  const network=deferredFetch(),ui=browserJourney(network.fetch);ui.button('Residential lease example report').props.onClick();ui.button('Employment offer example report').props.onClick();
  network.requests[1].resolve(response('second.txt'));await settle();network.requests[0].resolve(response('first.txt'));await settle();
- assert.equal(ui.state[15]._id,'second.txt');assert.equal(ui.state[6],false);
+ assert.equal(ui.state[16]._id,'second.txt');assert.equal(ui.state[7],false);
 });
 test('an abandoned upload failure cannot appear on another page',async()=>{
  const network=deferredFetch(),ui=browserJourney(network.fetch);ui.upload('first.txt');ui.button('Pricing').props.onClick();
  network.requests[0].reject(new Error('Network failure from old request'));await settle();
- assert.equal(ui.state[14],'');assert.equal(ui.state[1],'pricing');
+ assert.equal(ui.state[15],'');assert.equal(ui.state[1],'pricing');
 });
 
 test('payment journey requires server approval and recovers a lost response without another credit',async()=>{
@@ -62,17 +62,17 @@ test('payment journey requires server approval and recovers a lost response with
   global.fetch=(url,options)=>String(url).startsWith('https://api.paystack.co/')?Promise.resolve({ok:true,json:async()=>({status:true,data:{status:'success',amount:providerAmount,currency:'ZAR',customer:{email:'buyer@example.test'},metadata:{product:'single'}}})}):realFetch(url,options);
   const ui=browserJourney(async(url,options)=>{const r=await realFetch(base+url,options);if(url==='/api/unlock-analysis'&&r.ok&&dropFirstUnlock){dropFirstUnlock=false;await r.text();throw new Error('Connection lost after server unlocked report');}return r;},{2:{paystackPublicKey:'test-only',prices:{single:1900,pack3:3900,pack10:9900},maxFileMb:4},3:'online'});
   ui.context.PaystackPop=ui.context.window.PaystackPop={setup(options){paymentOptions=options;return {openIframe(){}};}};
-  ui.upload('payment-journey.txt');await until(()=>Boolean(ui.state[15]?._id));const analysisId=ui.state[15]._id;
-  assert.equal(ui.state[15].isPaid,false);assert.equal(ui.state[15].plainLanguageGuide,undefined);
+  ui.upload('payment-journey.txt');await until(()=>Boolean(ui.state[16]?._id));const analysisId=ui.state[16]._id;
+  assert.equal(ui.state[16].isPaid,false);assert.equal(ui.state[16].plainLanguageGuide,undefined);
   await ui.button('Full report').props.onClick();
   ui.find(n=>n.type==='input'&&n.props.id==='receipt-email').props.onChange({target:{value:'buyer@example.test'}});
   ui.find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
   assert.equal(paymentOptions.amount,1900);assert.equal(paymentOptions.currency,'ZAR');assert.equal(paymentOptions.metadata.analysisId,analysisId);
-  const reference='CC-ui-payment-journey-receipt';paymentOptions.callback({reference});await until(()=>ui.state[14].includes('mismatch'));
-  assert.equal(ui.state[15].isPaid,false);assert.equal(await store.getGrant(reference),null);
-  providerAmount=1900;paymentOptions.callback({reference});await until(()=>ui.state[14].includes('Connection lost'));
-  assert.equal((await store.getGrant(reference)).remaining,0);assert.equal(ui.state[15].isPaid,false);
-  await ui.button('Use a credit').props.onClick();assert.equal(ui.state[15].isPaid,true);assert.ok(ui.state[15].plainLanguageGuide.sections.length>0);assert.equal(ui.state[17],0);
+  const reference='CC-ui-payment-journey-receipt';paymentOptions.callback({reference});await until(()=>ui.state[15].includes('mismatch'));
+  assert.equal(ui.state[16].isPaid,false);assert.equal(await store.getGrant(reference),null);
+  providerAmount=1900;paymentOptions.callback({reference});await until(()=>ui.state[15].includes('Connection lost'));
+  assert.equal((await store.getGrant(reference)).remaining,0);assert.equal(ui.state[16].isPaid,false);
+  await ui.button('Use a credit').props.onClick();assert.equal(ui.state[16].isPaid,true);assert.ok(ui.state[16].plainLanguageGuide.sections.length>0);assert.equal(ui.state[18],0);
   const grant=await store.getGrant(reference);assert.equal(grant.remaining,0);assert.deepEqual(grant.unlocked,[analysisId]);assert.ok(ui.button('Export PDF'));
  }finally{global.fetch=realFetch;store.durable=wasDurable;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
 });
