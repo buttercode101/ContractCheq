@@ -43,3 +43,7 @@ Navigating away from an upload or example cancels waiting for it. Late responses
 Short text layers, including signature-page labels, are retained even when OCR returns little text or a renderer paints white. Limited extraction is flagged for comparison with the original. Packaged PDF standard fonts are explicitly supplied to the renderer.
 
 Regression coverage executes the shipped React event handlers against the real Express API and a temporary ledger, mocking only the payment provider boundary. It covers rejected payment amounts and recovery when the first unlock response is lost after a credit was consumed. This is not evidence of a real settled payment.
+
+## Role checklist and contextual dates
+
+The optional role selector tailors full-report review questions for tenants, landlords, employees and employers. It does not change legal rules or scores, diagnose missing clauses, or approve signing. Mismatched roles are identified in the report. Full reports and exported PDFs include validated ISO dates and selected periods with source-section labels and surrounding text. This limited extraction is not a complete deadline calendar. Free API previews use an explicit field allowlist and omit the checklist and source contexts.

@@ -53,12 +53,14 @@ test('free report renders findings, notes, details and unlock controls', () => {
 
 test('paid report renders every finding, recommendation, impact and PDF action', () => {
   const result = { ...specimen(), isPaid: true };
+  result.reportContext = {perspective:'tenant',roleNote:'Role questions only',questions:['Confirm deposit records'],dateNote:'Read conditions',dates:[{text:'30 days',sourceLabel:'Text section 1',context:'Give 30 days notice before termination.'}]};
   const html = renderToStaticMarkup(reportTree(result));
   assert.equal((html.match(/class="finding-card/g) || []).length, result.issues.length);
   for (const required of ['Recommended action', 'Potential impact.', 'Export PDF', 'What to do before you sign', 'notes-card'])
     assert.ok(html.includes(required), `missing paid report content: ${required}`);
   assert.ok(!html.includes('Unlock report'));
   assert.ok(html.includes('Your contract, in everyday language'));
+  for(const text of ['Confirm deposit records','30 days','Text section 1','before termination']) assert.ok(html.includes(text));
   assert.ok(html.includes('Original wording'));
   assert.ok(html.includes('Find wording in your contract'));
 });
@@ -66,6 +68,7 @@ test('paid report renders every finding, recommendation, impact and PDF action',
 test('PDF export paginates long findings before writing outside the page', () => {
   const result = { ...specimen(), isPaid: true };
   result.issues[0].analysis = 'Long paragraph '.repeat(3000);
+  result.reportContext={perspective:'employee',roleNote:'Role questions only',questions:['Check working hours'],dateNote:'Read conditions',dates:[{text:'2028-02-29',sourceLabel:'Text section 2',context:'Start date is 2028-02-29.'}]};
   let pages = 1, saved = false, writes = 0, output = [];
   class PDF {
     setFontSize() {}
@@ -84,6 +87,8 @@ test('PDF export paginates long findings before writing outside the page', () =>
   const button = find(tree);
   assert.ok(button, 'export button must exist');
   button.props.onClick();
+  assert.ok(output.join(' ').includes('Check working hours'));
+  assert.ok(output.join(' ').includes('2028-02-29'));
   assert.ok(saved && pages > 1 && writes > 100);
   assert.ok(output.join(' ').includes('YOUR CONTRACT, IN EVERYDAY LANGUAGE'));
   assert.ok(output.join(' ').includes('Original wording:'));

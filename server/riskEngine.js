@@ -384,7 +384,7 @@ const UK_RULES = [
   },
 ];
 
-function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
+function analyseContract(text, fileName = '', jurisdiction = 'ZA', perspective = 'neutral') {
   if (!text || text.length < 20) {
     return {
       score: 0,
@@ -511,6 +511,7 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     ? 'Automated rule-based review. Tenancy checks cover England only; Scotland, Wales and Northern Ireland have different rules. A low score is not a legal clearance. Monetary amounts are context only unless the relevant obligation can be established.'
     : 'Automated rule-based review, not a complete legal opinion. A low score is not a legal clearance. Rand amounts are surfaced as context only; exact legal exposure is not inferred without sufficient contract evidence.';
 
+  const guide = require('./plainLanguage').buildPlainLanguageGuide(text, docType);
   return {
     score,
     level,
@@ -520,7 +521,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
     priorities,
     confidence,
     criticalCount: severe,
-    plainLanguageGuide: require('./plainLanguage').buildPlainLanguageGuide(text, docType),
+    plainLanguageGuide: guide,
+    reportContext: require('./reportContext').reportContext(guide, docType, perspective),
     docTitle: fileName ? fileName.replace(/\.[^.]+$/, '') : `${docType} Agreement`,
     docType: `${docType} • analysed just now`,
     issues: found,
