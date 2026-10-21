@@ -64,6 +64,7 @@ async function getAnalysis(id) {
   if (!r) return null;
   if (r.value.at < Date.now() - 48 * 3600 * 1000) {
     if (durable()) await del(name, { ifMatch: r.etag });
+    else fs.rmSync(path.join(ROOT, digest(name) + '.json'), { force: true });
     return null;
   }
   return r.value;
@@ -150,9 +151,24 @@ async function metrics() {
 }
 
 async function cleanupExpired() {
-  if (!durable()) return;
-  let cursor;
   const cut = Date.now() - 48 * 3600 * 1000;
+  if (!durable()) {
+    if (process.env.VERCEL) return;
+    ensure();
+    for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
+      if (!entry.isFile() || !/^[a-f0-9]{64}\.json$/.test(entry.name)) continue;
+      const file = path.join(ROOT, entry.name);
+      let record;
+      try { record = JSON.parse(fs.readFileSync(file, 'utf8')); }
+      catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+      const id = record?.full?._id;
+      // Match the analysis key as well as its payload before deleting anything.
+      if (typeof id === 'string' && entry.name === digest(key('analyses', id)) + '.json' &&
+          Number.isFinite(record.at) && record.at < cut) fs.rmSync(file, { force: true });
+    }
+    return;
+  }
+  let cursor;
   do {
     const batch = await list({ prefix: 'contractcheck/analyses/', cursor, limit: 100 });
     for (const b of batch.blobs) if (new Date(b.uploadedAt).getTime() < cut) await del(b.url);

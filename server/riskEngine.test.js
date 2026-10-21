@@ -1,4 +1,17 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{analyseContract}=require('./riskEngine');
+test('rule excerpts retain matched wording without cutting surrounding context words',()=>{
+ const text='UK TENANCY AGREEMENT The Tenant shall pay a security deposit equal to eight weeks rent. The deposit is non-refundable if the Tenant leaves early. The Landlord may terminate the tenancy without reason on two weeks notice. The Tenant consents to the Landlord selling personal data to marketing partners.';
+ const result=analyseContract(text,'tenancy.txt','UK');
+ const finding=result.issues.find(issue=>issue.id.startsWith('uk-deposit-cap-'));
+ assert.ok(finding);
+ assert.match(finding.excerpt,/security deposit equal to eight weeks rent/);
+ for(const issue of result.issues.filter(issue=>issue.source==='rules')){
+  const start=text.indexOf(issue.excerpt),end=start+issue.excerpt.length;
+  assert.ok(start>=0,'excerpt must be original wording');
+  assert.ok(start===0||/\s/.test(text[start-1]),'context must not start inside a word');
+  assert.ok(end===text.length||/\s/.test(text[end]),'context must not end inside a word');
+ }
+});
 test('deposit-interest exclusions recognise deposit-first wording and a following sentence',()=>{
  for(const wording of ['The deposit is R8000. No interest will be paid.','The deposit is R8000 and no interest will accrue.','The deposit is R8000.\nNo interest shall be paid.']){
   const r=analyseContract('RESIDENTIAL LEASE AGREEMENT. '+wording,'lease.txt','ZA');

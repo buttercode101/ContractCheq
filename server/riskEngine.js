@@ -430,8 +430,11 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA') {
       }
       if (match) {
         seen.add(rule.id);
-        const startIdx = Math.max(0, match.index - 40);
-        const endIdx = Math.min(text.length, match.index + match[0].length + 80);
+        let startIdx = Math.max(0, match.index - 40);
+        let endIdx = Math.min(text.length, match.index + match[0].length + 80);
+        // Trim partial context words without dropping any matched wording.
+        while (startIdx > 0 && startIdx < match.index && !/\s/u.test(text[startIdx - 1])) startIdx++;
+        while (endIdx < text.length && endIdx > match.index + match[0].length && !/\s/u.test(text[endIdx])) endIdx--;
         let excerpt = text.slice(startIdx, endIdx).replace(/\s+/g, ' ').trim();
         if (excerpt.length < 20) excerpt = rule.fb;
         found.push({
