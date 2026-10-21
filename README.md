@@ -20,7 +20,7 @@ Vercel build: tests run before `build-vercel.js` packages the Express server and
 
 Connect a **private** Vercel Blob store to this project. The SDK uses BLOB_STORE_ID and Vercel-managed OIDC. Local development can use BLOB_READ_WRITE_TOKEN or the local file store.
 
-Set PAYSTACK_PUBLIC_KEY, PAYSTACK_SECRET_KEY, optional GROQ_API_KEY/GROQ_MODEL and TINYFISH_API_KEY as server-side environment variables. Set CRON_SECRET for the daily expired-analysis cleanup. Never commit credentials.
+Set PAYSTACK_PUBLIC_KEY, PAYSTACK_SECRET_KEY, optional OPENROUTER_API_KEY/OPENROUTER_MODEL, GROQ_API_KEY/GROQ_MODEL and TINYFISH_API_KEY as server-side environment variables. Set CRON_SECRET for the daily expired-analysis cleanup. AI enrichment is off unless AI_ENRICHMENT_ENABLED=true and the upload opts in. OpenRouter is preferred when configured; Groq is a fallback. Redaction covers common email/phone/ID patterns, not all personal data. TinyFish receives generic legal-topic queries. Never commit credentials.
 
 Pricing: R19 single report, R39 three reports, R99 ten reports. Receipts must match the paid product, exact ZAR amount and Paystack customer email. Re-verification does not add credits. Unlocks consume one credit atomically and retries of the same report are idempotent. The receipt is a bearer credential stored in the purchaser's browser.
 
