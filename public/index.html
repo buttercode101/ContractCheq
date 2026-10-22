@@ -120,7 +120,7 @@ function viewForPath(pathname){const p=(pathname||'/').replace(/^\/+|\/+$/g,'');
 function App() {
   const [ls] = useState(loadLS);
   var _s = useState(function(){return viewForPath(window.location.pathname);}); var view = _s[0]; var setView = _s[1];
-  var _c = useState({paystackPublicKey: '', prices: {single: 1900, pack3: 3900, pack10: 9900}, maxFileMb: 4}); var config = _c[0]; var setConfig = _c[1];
+  var _c = useState({paystackPublicKey: '', prices: {single: 1900, pack3: 3900, pack10: 9900}, maxFileMb: 4, aiEnrichmentEnabled: false}); var config = _c[0]; var setConfig = _c[1];
   var _ok = useState('…'); var serverOk = _ok[0]; var setServerOk = _ok[1];
   var _j = useState('ZA'); var jurisdiction = _j[0]; var setJurisdiction = _j[1];
   var _en = useState(false); var enrichLLM = _en[0]; var setEnrichLLM = _en[1];

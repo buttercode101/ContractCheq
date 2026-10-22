@@ -4,8 +4,9 @@ module.exports=async function verifyAI({browser,base,out,outDir,matrix,aiCalls,s
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
  page.setDefaultTimeout(20000);page.on('pageerror',e=>out.errors.push(e.message));
  await page.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:'/* No payment during synthetic AI coverage. */'}));
+ let releaseConfig;const configGate=new Promise(resolve=>{releaseConfig=resolve;});await page.route('**/api/config',async route=>{await configGate;await route.continue();});
  const ready=page.waitForResponse(r=>r.url()===base+'/api/config').then(r=>r.finished());
- await page.goto(base,{waitUntil:'domcontentloaded'});await ready;
+ await page.goto(base,{waitUntil:'domcontentloaded'});assert(await page.getByRole('checkbox',{name:/Add AI insights/}).isDisabled());releaseConfig();await ready;
  const checkbox=page.getByRole('checkbox',{name:/Add AI insights/});assert(await checkbox.isEnabled());assert.equal(await checkbox.isChecked(),false);await checkbox.check();
  const fixture={name:'ai-consent.txt',mimeType:'text/plain',buffer:Buffer.from('RESIDENTIAL LEASE. The tenant shall pay R8000 each month. The landlord may enter the dwelling without notice.')};
  await page.getByLabel('Choose a contract document').setInputFiles(fixture);await page.locator('.risk-gauge').waitFor();await page.locator('.enrichment-label').waitFor();assert.equal(aiCalls.length,1);
