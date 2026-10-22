@@ -69,3 +69,28 @@ test('keyboard and motion accessibility invariants remain in the shipped UI',()=
  assert.match(css,/:focus-visible/);
  assert.match(css,/prefers-reduced-motion/);
 });
+
+test('unknown demo identifiers never manufacture an empty low-risk report',async()=>{
+ const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+ try{
+  const base='http://127.0.0.1:'+server.address().port;
+  for(const key of ['__proto__','constructor','toString','hasOwnProperty','missing']){
+   const response=await fetch(base+'/api/demo/'+key);assert.equal(response.status,404,key);
+   const body=await response.json();assert.equal(body.error,'Example not found');assert.equal(body.score,undefined);
+  }
+  for(const key of ['lease','employment','ukTenancy']){
+   const response=await fetch(base+'/api/demo/'+key);assert.equal(response.status,200,key);const body=await response.json();
+   assert.ok(body.plainLanguageGuide.sections.length);assert.ok(body.actionPlan);assert.equal(body.isDemo,true);
+  }
+ }finally{server.close();}
+});
+
+test('malformed JSON cannot write submitted contract text into runtime error logs',async()=>{
+ const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+ const original=console.error,logged=[];console.error=(...args)=>logged.push(args);
+ const canary='PRIVATE-CONTRACT-JSON-CANARY';
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port+'/api/analyze-text',{method:'POST',headers:{'content-type':'application/json'},body:'{"text":"'+canary+'","jurisdiction":'});
+  assert.equal(response.status,400);assert.equal(JSON.stringify(logged).includes(canary),false);
+ }finally{console.error=original;server.close();}
+});
