@@ -3,13 +3,15 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
 // Separate fresh contexts exercise failure recovery without touching real receipts or storage.
 module.exports=async function verifyEdges({browser,base,out,outDir,matrix,bounded}){
  const backup=JSON.parse(fs.readFileSync(outDir+'/checklist-'+out.browser+'.json','utf8'));
- async function fresh(path='/'){
+ async function fresh(path='/',checkoutScript){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.setDefaultTimeout(20000);page.on('pageerror',e=>{out.errors.push(e.message);console.error('edge-page-error',JSON.stringify({url:page.url(),message:e.message,stack:e.stack}));});
-  await page.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Checkout is not used in failure recovery. */'}));
+  await page.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:checkoutScript||'/* Checkout is not used in failure recovery. */'}));
   // Gate on the configuration used by the UI; background telemetry must not block user journeys.
   const ready=page.waitForResponse(r=>r.url()===base+'/api/config').then(r=>r.json());
-  await page.goto(base+path,{waitUntil:'domcontentloaded'});await bounded(ready,'Fresh-context configuration '+path);return page;
+  await page.goto(base+path,{waitUntil:'domcontentloaded'});await bounded(ready,'Fresh-context configuration '+path);
+  if(checkoutScript)await page.waitForFunction(()=>typeof window.PaystackPop?.setup==='function',null,{timeout:20000});
+  return page;
  }
  const page=await fresh('/checklists');
  const poisoned={...backup,id:'untrusted-import',title:'Imported edge checklist',role:'__proto__',items:backup.items.map((i,n)=>n===0?{...i,quote:'<img src=x onerror="window.injectedBackup=true"> Client must pay after acceptance.'}:i)};
@@ -73,19 +75,16 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix,bounde
  out.checks.push('844x390 landscape: mobile navigation, history back, checkout scrolling, invalid email and Escape focus restoration pass');await landscape.context().close();
 
  // A delayed payment completion must retain the receipt without replacing a later page/report.
- const payRace=await fresh();
- await payRace.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:"window.PaystackPop={setup:function(o){return{openIframe:function(){o.callback({reference:'CC-navigation-browser-receipt'})}}}}"}));
- await payRace.reload({waitUntil:'domcontentloaded'});
+ const payRace=await fresh('/',"window.PaystackPop={setup:function(o){return{openIframe:function(){o.callback({reference:'CC-navigation-browser-receipt'})}}}}");
  await payRace.getByLabel('Choose a contract document').setInputFiles(input);await payRace.locator('.risk-gauge').waitFor();
  let releaseUnlock,unlockStarted;const unlockGate=new Promise(r=>releaseUnlock=r),unlockReady=new Promise(r=>unlockStarted=r);
  await payRace.route('**/api/unlock-analysis',async route=>{const response=await route.fetch();unlockStarted();await unlockGate;await route.fulfill({response});});
- await payRace.getByRole('button',{name:/Full report/}).click();await payRace.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await payRace.getByRole('button',{name:'Continue to Paystack'}).click();await unlockReady;
+ await payRace.getByRole('button',{name:/Full report/}).click();await payRace.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await payRace.getByRole('button',{name:'Continue to Paystack'}).click();await bounded(unlockReady,'Navigation payment unlock request');
  await payRace.getByRole('button',{name:'Open navigation menu',exact:true}).click();await payRace.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Pricing',exact:true}).click();releaseUnlock();await payRace.getByRole('status').filter({hasText:'Your report was unlocked'}).waitFor();
  await payRace.getByRole('button',{name:'Return to current report',exact:true}).click();assert.equal(await payRace.getByRole('button',{name:'Export PDF',exact:true}).count(),0);await payRace.context().close();
 
- const pricingBuy=await fresh();let incidentalUnlocks=0;
- await pricingBuy.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:"window.PaystackPop={setup:function(o){if(o.metadata.analysisId)throw Error('Pricing must not attach an incidental report');return{openIframe:function(){o.callback({reference:'CC-pricing-browser-receipt'})}}}}"}));
- await pricingBuy.reload({waitUntil:'domcontentloaded'});await pricingBuy.getByRole('button',{name:'Explore Residential lease example report',exact:true}).click();await pricingBuy.locator('.risk-gauge').waitFor();
+ const pricingBuy=await fresh('/',"window.PaystackPop={setup:function(o){if(o.metadata.analysisId)throw Error('Pricing must not attach an incidental report');return{openIframe:function(){o.callback({reference:'CC-pricing-browser-receipt'})}}}}");let incidentalUnlocks=0;
+ await pricingBuy.getByRole('button',{name:'Explore Residential lease example report',exact:true}).click();await pricingBuy.locator('.risk-gauge').waitFor();
  await pricingBuy.route('**/api/unlock-analysis',route=>{incidentalUnlocks++;return route.abort();});
  await pricingBuy.getByRole('button',{name:'Open navigation menu',exact:true}).click();await pricingBuy.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Pricing',exact:true}).click();await pricingBuy.getByRole('button',{name:'Buy R19',exact:true}).click();await pricingBuy.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await pricingBuy.getByRole('button',{name:'Continue to Paystack'}).click();
  await pricingBuy.getByRole('status').filter({hasText:'1 report credits added'}).waitFor();assert.equal(incidentalUnlocks,0);
