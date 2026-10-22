@@ -49,11 +49,11 @@ function buildActionPlan(guide, docType, perspective, reportDates = []) {
  if(rows.some(r=>r.payer.startsWith('Unclear')||r.recipient.startsWith('Unclear')))questions.push('Please confirm who pays whom for each payment term shown in the report.');
  if(rows.some(r=>r.conditional||!r.timing.length))questions.push('Please confirm each payment deadline and the event that starts any relative period, such as invoice receipt or acceptance.');
  if(!paymentSummary[0].entries.length)questions.push('Please confirm the agreed fees, payer, recipient and payment schedule.');
- for(const q of guide.checklist||[])if(!q.found && questions.length<10)questions.push(q.note);
+ for(const q of guide.checklist||[])if(!q.found && questions.length<10)questions.push('Please confirm the '+q.title.toLowerCase()+' terms. '+q.note);
  const items=obligations.map(o=>({id:o.id,kind:'obligation',label:o.label,party:o.party,sourceLabel:o.sourceLabel,quote:o.quote,confirmed:false,done:false,calendarDate:'',dateConfirmed:false}));
  const seenSources=new Set(obligations.map(o=>o.sourceLabel));
  for(const row of rows){if(seenSources.has(row.sourceLabel))continue;seenSources.add(row.sourceLabel);items.push({id:idFor('payment|'+row.sourceLabel),kind:'payment',label:'Confirm payment wording: '+row.sourceLabel,party:row.payer,sourceLabel:row.sourceLabel,quote:row.quote,confirmed:false,done:false,calendarDate:'',dateConfirmed:false});}
  for(const date of reportDates)items.push({id:idFor('date|'+date.sourceLabel+'|'+date.text),kind:'date',label:'Date or period mentioned: '+date.text,party:'Confirm the responsible party',sourceLabel:date.sourceLabel,quote:date.context,confirmed:false,done:false,calendarDate:'',dateConfirmed:false});
- return {version:1,paymentSummary,obligations,scopeChecks,questions:[...new Set(questions)].slice(0,10),items:items.slice(0,80),coverage:'Based only on the reading-guide sections included in this report. Wording found does not establish completeness or enforceability. Mentioned amounts are not calculated balances owed; confirm parties, conditions and linked clauses.'};
+ return {version:1,paymentSummary,obligations,scopeChecks,questions:[...new Set(questions)].slice(0,10),items:items.slice(0,80),coverage:'Based only on the reading-guide sections included in this report. Each payment category shows up to four sections; the checklist includes up to 80 items. Wording found does not establish completeness or enforceability. Mentioned amounts are not calculated balances owed; confirm parties, conditions and linked clauses.'};
 }
 module.exports={buildActionPlan};
