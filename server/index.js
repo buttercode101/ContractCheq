@@ -119,7 +119,12 @@ async function extractFromPdf(filePath) {
 
 async function extractFromImage(filePath, timeoutMs = 35000) {
   const Tesseract=require('tesseract.js');
-  let worker, timer;
+  let worker, timer, cancelled=false, termination;
+  const timeoutError=()=>Object.assign(new Error('Image recognition timed out. Try a smaller, sharper photo.'),{status:422});
+  const stopWorker=()=>{
+    if(worker&&!termination)termination=Promise.resolve().then(()=>worker.terminate()).catch(()=>console.warn('OCR worker cleanup unavailable'));
+    return termination;
+  };
   const work=(async()=> {
     worker=await Tesseract.createWorker('eng',1,{
       cachePath:'/tmp',
@@ -127,6 +132,9 @@ async function extractFromImage(filePath, timeoutMs = 35000) {
       workerPath:require.resolve('tesseract.js/src/worker-script/node/index.js'),
       logger:()=>{}
     });
+    // Startup can settle after the response deadline. Do not leave its worker
+    // alive or begin decoding a document after the request has already failed.
+    if(cancelled){await stopWorker();throw timeoutError();}
     const graphics=require('@napi-rs/canvas');
     let input=filePath;
     try {let image;
@@ -141,23 +149,33 @@ async function extractFromImage(filePath, timeoutMs = 35000) {
       if(image.width*image.height>25000000) throw Object.assign(new Error('Image is too large. Resize it below 25 megapixels.'),{status:422});
       const canvas=graphics.createCanvas(image.width,image.height);const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,image.width,image.height);ctx.drawImage(image,0,0);input=canvas.toBuffer('image/png');
     } catch(error) {if(error.status) throw error;throw Object.assign(new Error('This image could not be read. Try a clear PNG, JPG or WebP photo.'),{status:422});}
+    if(cancelled)throw timeoutError();
     const result=await worker.recognize(input);
     const text=(result.data?.text||'').trim();
     return {text,pages:1,method:'tesseract',confidence:(result.data?.confidence||0)/100,
       warning:text.length<30?'OCR returned little text. Try a sharper photo.':null};
   })();
   try {
-    return await Promise.race([work,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('Image recognition timed out. Try a smaller, sharper photo.'),{status:422})),timeoutMs);})]);
-  } finally {clearTimeout(timer);if(worker) await worker.terminate();}
+    return await Promise.race([work,new Promise((_,reject)=>{timer=setTimeout(()=>{cancelled=true;reject(timeoutError());},timeoutMs);})]);
+  } finally {cancelled=true;clearTimeout(timer);await stopWorker();}
+}
+
+function validateText(text) {
+  if (/[\u0000-\u0008\u000e-\u001f\u007f]/.test(text)) {
+    throw Object.assign(new Error('This file contains binary data instead of readable text. Export it as a UTF-8 text file or upload the original PDF.'), {status:422});
+  }
+  return text;
 }
 
 function decodeText(buffer) {
-  if (buffer[0]===0xff && buffer[1]===0xfe) return buffer.subarray(2).toString('utf16le');
-  if (buffer[0]===0xfe && buffer[1]===0xff) {
-    const copy=Buffer.from(buffer.subarray(2));if(copy.length%2) throw Object.assign(new Error('Invalid UTF-16 text file.'),{status:422});
-    return copy.swap16().toString('utf16le');
+  let text;
+  try {
+    const encoding=buffer[0]===0xff&&buffer[1]===0xfe?'utf-16le':buffer[0]===0xfe&&buffer[1]===0xff?'utf-16be':'utf-8';
+    text=new TextDecoder(encoding,{fatal:true}).decode(buffer);
+  } catch (_) {
+    throw Object.assign(new Error('This text file has damaged or unsupported encoding. Export it as UTF-8 text or upload the original PDF.'), {status:422});
   }
-  return buffer.toString('utf8').replace(/^\uFEFF/,'');
+  return validateText(text);
 }
 
 async function extractText(file) {
@@ -409,6 +427,9 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
+    const jurisdiction = String(req.body?.jurisdiction || req.query.jurisdiction || 'ZA').toUpperCase();
+    if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
+    const perspective = validatePerspective(req.body?.perspective ?? req.query.perspective);
     const extracted = await extractText(file);
 
     if (!extracted.text || extracted.text.trim().length < 30) {
@@ -421,9 +442,6 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
 
     if (extracted.text.length > MAX_TEXT_CHARS) return res.status(413).json({error:'This document has too much text. Split it into documents under 200,000 characters.'});
 
-    const jurisdiction = String(req.body?.jurisdiction || req.query.jurisdiction || 'ZA').toUpperCase();
-    if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({error:'Choose South Africa (ZA) or United Kingdom (UK).'});
-    const perspective = validatePerspective(req.body?.perspective ?? req.query.perspective);
     let analysis = analyseContract(extracted.text, file.originalname || 'document', jurisdiction, perspective);
     analysis.extraction = {
       method: extracted.method,
@@ -464,6 +482,7 @@ app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
     if (!['ZA','UK'].includes(jurisdiction)) return res.status(400).json({ error: 'Choose South Africa (ZA) or United Kingdom (UK).' });
     if (typeof text !== 'string' || text.trim().length < 30) return res.status(400).json({ error: 'Enter at least 30 characters of contract text.' });
     if (text.length > MAX_TEXT_CHARS) return res.status(413).json({ error: 'This document has too much text. Split it into documents under 200,000 characters.' });
+    validateText(text);
     const perspective = validatePerspective(req.body?.perspective);
     const analysis = analyseContract(text, name, jurisdiction, perspective);
     analysis._id = `local-${Date.now()}-${uuidv4()}`;
@@ -518,4 +537,4 @@ if (require.main === module) app.listen(PORT, () => {
 });
 
 module.exports = app;
-module.exports.__internal = { redactSensitiveText, externalAiEnabled, freeViewOf };
+module.exports.__internal = { redactSensitiveText, externalAiEnabled, freeViewOf, extractFromImage };

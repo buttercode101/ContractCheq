@@ -61,6 +61,14 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix,bounde
  await retry.unroute('**/api/analyze');await retry.getByLabel('Choose a contract document').setInputFiles(input);await retry.locator('.risk-gauge').waitFor();assert.equal(await retry.getByRole('alert').count(),0);
  out.checks.push('A failed upload surfaces its error and the same file succeeds after retry');await retry.context().close();
 
+ const damaged=await fresh();
+ await damaged.getByLabel('Choose a contract document').setInputFiles({name:'damaged.txt',mimeType:'text/plain',buffer:Buffer.alloc(60)});
+ await damaged.getByRole('alert').filter({hasText:'binary data instead of readable text'}).waitFor();
+ assert.equal(await damaged.locator('.risk-gauge').count(),0);
+ await damaged.getByLabel('Choose a contract document').setInputFiles(input);
+ await damaged.locator('.risk-gauge').waitFor();assert.equal(await damaged.getByRole('alert').count(),0);
+ out.checks.push('Binary text is rejected without displaying a risk score; a valid contract succeeds immediately afterwards');await damaged.context().close();
+
  const landscape=await fresh();await landscape.setViewportSize({width:844,height:390});
  await landscape.getByRole('button',{name:'Open navigation menu',exact:true}).click();
  await landscape.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Saved checklists',exact:true}).click();
