@@ -1,6 +1,10 @@
 # ContractCheck SA v3.1
 
-The default `main` branch is the source for the `contractcheck-sa-v3` Vercel project. Both `contractcheck-sa-v3.vercel.app` and `contract-check-v3-sa.vercel.app` are production domains of that project.
+The default `main` branch is the source for the `contractcheck-sa-v3` Vercel project. The only public site origin is **https://contractcheck.online**. Do not add www, legacy domains, branch aliases, or preview domains as public entry points.
+
+Production static routing and the API reject other hosts. Local development remains available on localhost. The only exception is authenticated `GET /api/cleanup`, because Vercel Cron may use a generated deployment hostname; the configured `CRON_SECRET` is mandatory. Keep Vercel Deployment Protection enabled for generated deployment URLs. Remove obsolete project domains and aliases in Vercel rather than redirecting them. Domain registrations and unrelated email DNS records must be retained.
+
+The canonical origin and production host policy live in `server/siteConfig.js`. The HTML canonical and Open Graph URL identify the same origin. No environment variable can silently change the production site identity.
 
 ## Paid plain-language reading guide
 

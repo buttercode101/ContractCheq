@@ -14,6 +14,7 @@ const { analyseContract } = require('./riskEngine');
 const { validatePerspective } = require('./reportContext');
 const DEMO_SAMPLES = require('./demoSamples');
 const store = require('./store');
+const { SITE_ORIGIN, canonicalHost } = require('./siteConfig');
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_FILE_MB = process.env.VERCEL ? 4 : (Number(process.env.MAX_FILE_MB) || 12);
@@ -31,6 +32,7 @@ store.ensure();
 
 const app = express();
 app.set('trust proxy', 1);
+app.use(canonicalHost);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use((_req,res,next)=>{res.set(require('./securityHeaders').securityHeaders());next();});
 app.use('/api', (_req,res,next)=>{res.set('Cache-Control','no-store');next();});
@@ -199,7 +201,7 @@ async function callOpenRouter(messages, modelOverride = OPENROUTER_MODEL) {
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.APP_URL || 'https://localhost:3000',
+        'HTTP-Referer': SITE_ORIGIN,
         'X-OpenRouter-Title': 'ContractCheck',
       },
       body: JSON.stringify(openrouterBody(messages, modelOverride || OPENROUTER_MODEL))
