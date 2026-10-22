@@ -10,3 +10,5 @@ test('browser application script parses before deployment',()=>{
   assert.ok(script.trim().length>100,'expected application script body');
   new vm.Script(script,{filename:'public/index.html'});
 });
+
+test('checklist browser assets parse before deployment',()=>{for(const asset of ['checklist-tools.js','contract-actions.js'])new (require('node:vm').Script)(fs.readFileSync(require('node:path').join(__dirname,'../public',asset),'utf8'));});

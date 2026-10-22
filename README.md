@@ -46,4 +46,13 @@ Regression coverage executes the shipped React event handlers against the real E
 
 ## Role checklist and contextual dates
 
-The optional role selector tailors full-report review questions for tenants, landlords, employees and employers. It does not change legal rules or scores, diagnose missing clauses, or approve signing. Mismatched roles are identified in the report. Full reports and exported PDFs include validated ISO and written day-month-year dates and selected periods with source-section labels and surrounding text. This limited extraction is not a complete deadline calendar. Free API previews use an explicit field allowlist and omit the checklist and source contexts.
+The optional role selector tailors full-report review questions for tenants, landlords, employees, employers, freelancers/service providers and clients. It does not change legal rules or scores, diagnose missing clauses, or approve signing. Mismatched roles are identified in the report. Full reports and exported PDFs include validated ISO and written day-month-year dates and selected periods with source-section labels and surrounding text. This limited extraction is not a complete deadline calendar. Free API previews use an explicit field allowlist and omit the checklist and source contexts.
+
+
+## Payment summaries and confirmed checklists
+
+New full reports and examples include source-linked payment wording, recognised obligations and editable clarification questions. Service reviews also surface deliverable, revision, acceptance, scope-change and ownership questions. These limited keyword checks use only the reading guide’s included sections. They do not calculate a balance, verify payment, change the risk score or decide enforceability. Unknown parties and missing wording are explicitly labelled for confirmation.
+
+Checklist items start unconfirmed. A calendar event requires the user to confirm both the item and a manually entered valid calendar date. Relative periods, business days and triggers are never converted into deadlines automatically. The all-day `.ics` export includes the source excerpt; it does not send reminders or connect to a calendar account.
+
+Saving is explicitly opt-in. `/checklists` reads up to 10 local checklists (80 items each) from the separate `cc_checklists_v1` browser key. Clause excerpts and confirmed progress persist beyond the server report’s 48-hour access window until removed or browser data is cleared. This does not grant access to an expired or unpaid report. JSON backup/restore is device-independent, versioned, bounded and validated; imported text is rendered through React without HTML interpretation. Payment references and receipt credentials are not included. PDF export contains the report’s original action suggestions; use the checklist backup to preserve edited progress and dates.

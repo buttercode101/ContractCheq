@@ -33,7 +33,7 @@ test('free preview admits only approved fields, even when new paid fields are ad
  const full=analyseContract('RESIDENTIAL LEASE. Landlord may enter without notice. Give 30 days notice.','lease','ZA','tenant');
  full.rawText='secret';full.futurePaidField='secret';full.issues[0].suggestedLanguage='paid wording';full.issues[0].futurePaidField='paid';
  const view=freeViewOf(full);
- for(const key of ['reportContext','plainLanguageGuide','rawText','futurePaidField','decision','priorities']) assert.equal(view[key],undefined,key);
+ for(const key of ['actionPlan','reportContext','plainLanguageGuide','rawText','futurePaidField','decision','priorities']) assert.equal(view[key],undefined,key);
  for(const issue of view.issues) for(const key of ['recommendation','impact','suggestedLanguage','futurePaidField']) assert.equal(issue[key],undefined,key);
  assert.ok(full.reportContext.questions.length);assert.ok(full.plainLanguageGuide);
 });

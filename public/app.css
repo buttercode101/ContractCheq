@@ -203,3 +203,29 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 #report-context{scroll-margin-top:12px}
 #report-context:focus{outline:2px solid var(--accent);outline-offset:5px}
 @media(max-width:640px){.report-context{padding:20px}.report-context h2{font-size:24px}.report-context blockquote{padding:12px}.report-context li{margin-bottom:14px}}
+
+/* Source-backed actions use the report's existing type, spacing and colour tokens. */
+.contract-actions,.saved-editor{margin:24px 0;padding:28px;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow-wrap:anywhere}
+.contract-actions h2,.saved-editor h2{font-size:26px;line-height:1.3;letter-spacing:-.4px;margin:8px 0 12px}
+.contract-actions h3{font-size:21px;line-height:1.4;margin:28px 0 12px}.contract-actions p,.saved-checklists p{font-size:16px;line-height:1.65}
+.action-intro,.action-party,.checklist-storage-note{color:var(--muted)}
+.payment-group{border-top:1px solid var(--line);padding:8px 0}.payment-group>summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;cursor:pointer;padding:12px 0;min-height:48px}
+.payment-group>summary strong{font-size:16px}.payment-group>summary span{font-size:14px;color:var(--muted)}
+.payment-group>p{padding:12px 0}.payment-entry{padding:16px 0}.payment-entry+.payment-entry{border-top:1px solid var(--line)}
+.payment-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:0 0 16px}.payment-facts dt{font-size:13px;color:var(--muted);margin-bottom:4px}.payment-facts dd{margin:0;font-size:16px;line-height:1.6;font-weight:600}
+.action-source{margin:12px 0}.action-source summary,.action-date summary{cursor:pointer;font-size:14px;line-height:1.6;padding:12px 0;min-height:44px;color:var(--accent)}
+.action-source blockquote{font-size:15px;line-height:1.65;background:var(--paper);border-left:3px solid var(--line);border-radius:0 8px 8px 0;padding:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.scope-grid,.saved-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.scope-item{padding:20px;border:1px solid var(--line);border-radius:8px}.scope-item h4{font-size:17px;line-height:1.4;margin-bottom:8px}.scope-item p.scope-status{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px}
+.action-tracking,.action-questions{border-top:1px solid var(--line);margin-top:28px;padding-top:4px}.action-count{padding:16px 0;font-size:14px!important;color:var(--muted)}
+.action-items{display:grid;gap:16px}.action-item{border:1px solid var(--line);padding:20px;border-radius:8px;min-width:0}.action-item h3{font-size:17px;line-height:1.6;margin:8px 0}.action-party{font-size:14px!important}
+.action-check{display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.6;min-height:48px;padding:8px 0;cursor:pointer}.action-check input{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent)}
+.action-date{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}.action-date>p{font-size:14px;color:var(--muted);margin-bottom:16px}.action-date>label:not(.action-check){display:block;font-size:14px;font-weight:600;margin-bottom:8px}.action-date>input{min-height:48px;max-width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit}
+.checklist-storage-note{padding:20px 0;font-size:14px!important}.action-buttons{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}.action-buttons button{white-space:normal;text-align:center;min-height:48px;max-width:100%}
+.action-message{background:var(--soft);padding:16px;border-radius:8px;margin:16px 0;font-size:14px!important}
+.action-questions>label{display:block;font-size:21px;font-weight:600;line-height:1.4;margin:24px 0 12px}.action-questions textarea{display:block;width:100%;margin:16px 0;padding:16px;min-height:220px;resize:vertical;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.65}
+.saved-checklists{max-width:900px;margin:auto}.saved-checklists .page-intro{text-align:left}.saved-card{display:flex;flex-direction:column;gap:12px;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:12px;text-align:left;overflow-wrap:anywhere}.saved-card:hover{border-color:var(--accent)}.saved-card strong{font-size:18px;line-height:1.5}.saved-card span{font-size:14px;color:var(--muted)}
+.checklist-import{position:relative;display:inline-flex;cursor:pointer;max-width:100%}.checklist-import input{position:absolute;opacity:0;width:1px;height:1px;left:50%;bottom:0}.checklist-remove{padding:16px;border:1px solid var(--line);border-radius:8px}.checklist-remove button{margin:12px 12px 0 0}
+#report-actions{scroll-margin-top:12px}#report-actions:focus{outline:2px solid var(--accent);outline-offset:5px}
+@media(min-width:901px) and (max-width:1100px){.desktop-nav{gap:0}.desktop-nav .nav-item{padding-inline:10px}.header-inner{gap:16px}}
+@media(max-width:640px){.contract-actions,.saved-editor{padding:20px}.contract-actions h2,.saved-editor h2{font-size:24px}.payment-facts,.scope-grid,.saved-grid{grid-template-columns:1fr}.action-item,.scope-item{padding:16px}.action-buttons{flex-direction:column;align-items:stretch}.action-source blockquote{padding:12px}.payment-group>summary{display:block}.payment-group>summary span{display:block;margin-top:4px}.action-questions>label{font-size:20px}}

@@ -512,6 +512,7 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA', perspective =
     : 'Automated rule-based review, not a complete legal opinion. A low score is not a legal clearance. Rand amounts are surfaced as context only; exact legal exposure is not inferred without sufficient contract evidence.';
 
   const guide = require('./plainLanguage').buildPlainLanguageGuide(text, docType);
+  const context = require('./reportContext').reportContext(guide, docType, perspective);
   return {
     score,
     level,
@@ -522,7 +523,8 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA', perspective =
     confidence,
     criticalCount: severe,
     plainLanguageGuide: guide,
-    reportContext: require('./reportContext').reportContext(guide, docType, perspective),
+    reportContext: context,
+    actionPlan: require('./actionPlan').buildActionPlan(guide, docType, perspective, context.dates),
     docTitle: fileName ? fileName.replace(/\.[^.]+$/, '') : `${docType} Agreement`,
     docType: `${docType} • analysed just now`,
     issues: found,
