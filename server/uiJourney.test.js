@@ -10,15 +10,15 @@ const {analyseContract}=require('./riskEngine');
 // Deferred requests may ignore abort, so stale-response guards are tested too.
 function browserJourney(fetchImpl,initial={},saved={}) {
  const script=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8').split('<script>').at(-1).split('</script>')[0];
- const state=[],refs=[];let stateIndex=0,refIndex=0,root;
+ const state=[],refs=[],effects=[];let stateIndex=0,refIndex=0,root;
  const location={pathname:'/'};
- const context={React:{...React,useState(value){const i=stateIndex++;if(!(i in state))state[i]=Object.hasOwn(initial,i)?initial[i]:typeof value==='function'?value():value;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(value){const i=refIndex++;return refs[i]||(refs[i]={current:value});},useCallback:fn=>fn,useEffect(){}},ReactDOM:{createRoot:()=>({render:element=>{root=element;}})},document:{getElementById:()=>({}),activeElement:null},window:{location,history:{pushState(_s,_t,url){location.pathname=url;}},scrollTo(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(_key,value){saved=JSON.parse(value);}},fetch:fetchImpl,AbortController,FormData,console,setTimeout,clearTimeout,crypto:require('node:crypto').webcrypto};
+ const context={React:{...React,useState(value){const i=stateIndex++;if(!(i in state))state[i]=Object.hasOwn(initial,i)?initial[i]:typeof value==='function'?value():value;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(value){const i=refIndex++;return refs[i]||(refs[i]={current:value});},useCallback:fn=>fn,useEffect(callback){effects.push(callback);}},ReactDOM:{createRoot:()=>({render:element=>{root=element;}})},document:{getElementById:()=>({focus(){}}),activeElement:null},window:{location,history:{pushState(_s,_t,url){location.pathname=url;}},scrollTo(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(_key,value){saved=JSON.parse(value);}},fetch:fetchImpl,AbortController,FormData,console,setTimeout,clearTimeout,crypto:require('node:crypto').webcrypto};
  vm.createContext(context);vm.runInContext(script,context);
- function render(){stateIndex=0;refIndex=0;return root.type();}
+ function render(){stateIndex=0;refIndex=0;effects.length=0;return root.type();}
  function find(predicate,node){if(arguments.length===1)node=render();if(!node||typeof node!=='object')return;if(Array.isArray(node))return node.map(n=>find(predicate,n)).find(Boolean);if(predicate(node))return node;return find(predicate,node.props?.children);}
  const button=name=>{const node=find(n=>n.type==='button'&&(String(n.props['aria-label']||'').includes(name)||JSON.stringify(n.props.children).includes(name)));assert.ok(node,'Missing button: '+name);return node;};
  const upload=name=>{const input=find(n=>n.type==='input'&&n.props.type==='file');assert.ok(input);input.props.onChange({target:{files:[new File(['EMPLOYMENT AGREEMENT. The employee shall work 55 hours per week.'],name,{type:'text/plain'})],value:''}});};
- return {state,render,find,button,upload,context};
+ return {state,render,find,button,upload,context,effects};
 }
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 test('saved paid-report reopen cannot spend a new credit or override later navigation',async()=>{
@@ -117,4 +117,53 @@ test('buying a single credit on Pricing never attempts to unlock a lingering exa
  ui.find(n=>n.type==='form'&&JSON.stringify(n.props.children).includes('receipt-email')).props.onSubmit({preventDefault(){}});assert.equal(checkout.metadata.analysisId,'');checkout.callback({reference:'CC-pricing-example-receipt'});
  network.requests[0].resolve({ok:true,json:async()=>({ok:true,grantId:'CC-pricing-example-receipt',credits:1})});await settle();
  assert.equal(network.requests.length,1);assert.equal(ui.state[17],1);assert.match(ui.state[9],/1 report credits added/);assert.equal(ui.state[14],'');
+});
+
+test('configuration loading, outage and retry expose accurate AI and checkout states',async()=>{
+ const network=deferredFetch(),ui=browserJourney(network.fetch);
+ ui.render();const cleanup=ui.effects[0]();
+ assert.match(ui.find(n=>n.props?.className==='ai-disclosure').props.children,/Checking AI availability/);
+ assert.equal(ui.find(n=>n.type==='input'&&n.props.type==='checkbox').props.disabled,true);
+ network.requests[0].resolve({ok:false,json:async()=>({error:'Synthetic outage'})});await settle();
+ assert.equal(ui.state[3],'offline');assert.ok(ui.find(n=>n.props?.className==='service-status'));
+ ui.button('Pricing').props.onClick();assert.ok(ui.find(n=>n.props?.className==='service-status'));
+ assert.equal(ui.button('Buy R19').props.disabled,true);
+ const retry=ui.button('Retry connection').props.onClick;
+ ui.state[5]=true;
+ const first=retry();assert.equal(ui.button('Reconnecting…').props.disabled,true);assert.equal(ui.state[5],false);
+ const latest=retry();
+ assert.equal(network.requests[1].options.signal.aborted,true);
+ const config={prices:{single:1900,pack3:3900,pack10:9900},paystackPublicKey:'test-only',aiEnrichmentEnabled:true,maxFileMb:4};
+ network.requests[2].resolve({ok:true,json:async()=>config});await latest;
+ network.requests[1].resolve({ok:true,json:async()=>({...config,aiEnrichmentEnabled:false})});await first;
+ assert.equal(ui.state[3],'online');assert.equal(ui.state[2].aiEnrichmentEnabled,true);
+ assert.equal(ui.button('Buy R19').props.disabled,false);
+ assert.equal(ui.find(n=>n.props?.className==='service-status'),undefined);
+ ui.button('Check a contract').props.onClick();
+ assert.equal(ui.find(n=>n.type==='input'&&n.props.type==='checkbox').props.disabled,false);
+ cleanup();
+});
+
+test('a stalled configuration request times out into actionable recovery',async()=>{
+ let expire,aborted=false;
+ const ui=browserJourney((url,options)=>url==='/api/events'?Promise.resolve({}):new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>{aborted=true;reject(new Error('aborted'));})));
+ ui.context.setTimeout=(fn,ms)=>{assert.equal(ms,25000);expire=fn;return 1;};ui.context.clearTimeout=()=>{};
+ ui.render();const cleanup=ui.effects[0]();expire();await settle();
+ assert.equal(aborted,true);assert.equal(ui.state[3],'offline');assert.ok(ui.button('Retry connection'));
+ cleanup();
+});
+
+test('incomplete price settings never enable checkout',async()=>{
+ const network=deferredFetch(),ui=browserJourney(network.fetch);
+ ui.render();const cleanup=ui.effects[0]();
+ network.requests[0].resolve({ok:true,json:async()=>({prices:{single:1900},aiEnrichmentEnabled:true})});await settle();
+ assert.equal(ui.state[3],'offline');ui.button('Pricing').props.onClick();assert.equal(ui.button('Buy R19').props.disabled,true);
+ cleanup();
+});
+
+test('navigation sets descriptive tab titles without exposing contract filenames',()=>{
+ const ui=browserJourney(()=>Promise.resolve({}));
+ ui.render();ui.effects[2]();assert.equal(ui.context.document.title,'Understand your contract before you sign | ContractCheck');
+ ui.button('Pricing').props.onClick();ui.render();ui.effects[2]();assert.equal(ui.context.document.title,'Pricing | ContractCheck');
+ ui.state[1]='result';ui.render();ui.effects[2]();assert.equal(ui.context.document.title,'Your report | ContractCheck');
 });

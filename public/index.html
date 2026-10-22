@@ -169,15 +169,32 @@ function App() {
   const [recoveredReports,setRecoveredReports]=useState(null);
 
   const [perspective,setPerspective] = useState('neutral');
+  const [reconnecting,setReconnecting] = useState(false);
   const screen=useRef(null);screen.current={view,result};
+  const configRequest=useRef(null);
+
+  async function loadConfiguration(retry=false) {
+    configRequest.current?.abort();
+    const controller=new AbortController();
+    configRequest.current=controller;
+    if(retry===true)setReconnecting(true);
+    setEnrichLLM(false);
+    setServerOk('…');
+    try {
+      const c=await fetchJSON(API+'/api/config',{signal:controller.signal});
+      if(!c.prices||!['single','pack3','pack10'].every(key=>Number.isInteger(c.prices[key])&&c.prices[key]>0))throw new Error('Configuration unavailable');
+      if(configRequest.current!==controller||controller.signal.aborted)return;
+      setConfig(c);
+      setServerOk('online');
+    } catch (_) {
+      if(configRequest.current===controller&&!controller.signal.aborted)setServerOk('offline');
+    } finally {if(configRequest.current===controller)setReconnecting(false);}
+  }
 
   useEffect(function() {
     track('page_view', {});
-    fetch(API + '/api/config').then(function(r) { return r.json(); }).then(function(c) {
-      if(!c.prices || typeof c.prices.single !== 'number')throw new Error('Configuration unavailable');
-      setConfig(c);
-      setServerOk('online');
-    }).catch(function() { setServerOk('offline'); });
+    loadConfiguration();
+    return ()=>configRequest.current?.abort();
   }, []);
 
   useEffect(function() {
@@ -185,6 +202,8 @@ function App() {
   }, [credits, unlocked, payEmail, notes, paymentRef]);
 
   useEffect(()=>{
+    const titles={landing:'Understand your contract before you sign',pricing:'Pricing',checklists:'Saved checklists',privacy:'Privacy',terms:'Terms',contact:'Contact',result:'Your report'};
+    document.title=(titles[view]||titles.landing)+' | ContractCheck';
     window.scrollTo({top:0,behavior:'instant'});
     if(!initialView.current)document.getElementById('main-content')?.focus({preventScroll:true});
     initialView.current=false;
@@ -509,9 +528,9 @@ function App() {
 h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'),
           h('select',{id:'perspective','aria-describedby':'role-hint',value:perspective,disabled:scanning,onChange:e=>setPerspective(e.target.value)},['neutral','tenant','landlord','employee','employer','freelancer','client'].map(role=>h('option',{key:role,value:role},role==='neutral'?'General review':role==='freelancer'?'Freelancer / service provider':role.charAt(0).toUpperCase()+role.slice(1)))),
           h('p',{className:'role-hint',id:'role-hint'},'Tailors questions in the full report. Your role does not change the risk score.')),
-          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning||config.aiEnrichmentEnabled===false,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},config.aiEnrichmentEnabled===false?'AI insights are currently unavailable. The rules-based report still works.':'AI reviews up to '+(config.aiMaxChars||4000)+' characters via '+(config.aiGroqFallback?'OpenRouter or Groq':'OpenRouter')+'. Redaction is limited; names and other identifying details may remain.'))),
+          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning||serverOk!=='online'||!config.aiEnrichmentEnabled,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},serverOk==='…'?'Checking AI availability. AI stays off while settings load.':serverOk==='offline'?'Could not check AI availability. Retry the connection to check again.':!config.aiEnrichmentEnabled?'AI insights are currently unavailable. The rules-based report still works.':'AI reviews up to '+(config.aiMaxChars||4000)+' characters via '+(config.aiGroqFallback?'OpenRouter or Groq':'OpenRouter')+'. Redaction is limited; names and other identifying details may remain.'))),
           h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Uploaded file deleted after processing. Report access expires after 48 hours; stored report text is removed at the next daily cleanup, up to 24 hours later. ',h('button',{onClick:()=>go('privacy')},'Privacy details'))),
-          serverOk==='offline'&&h('p',{role:'status',className:'connection-note'},'Connection unavailable. Please try again shortly.'))),
+          )),
       h('section',{className:'how-section','aria-label':'How it works'},h('div',{className:'how-grid'},[['01','Upload','Choose your rules and add a document.'],['02','Understand','Read your score and the flagged clauses.'],['03','Decide','Take the next step with a clearer picture.']].map(x=>h('div',{key:x[0],className:'how-item'},h('span',{className:'how-num'},x[0]),h('div',null,h('h3',null,x[1]),h('p',null,x[2])))))),
       h('section',{className:'examples-section'},h('div',{className:'section-heading'},h('div',null,h('div',{className:'eyebrow'},'A look inside'),h('h2',null,'Know what to expect.'),h('p',null,'Explore a full example report before you upload.')),h('span',{className:'section-caption'},'Sample documents · Real rule-engine results')),
         h('div',{className:'example-grid'},demoCard('lease','Residential lease','Access, deposits, and personal data.'),demoCard('employment','Employment offer','Working hours, overtime, and your rights.'),demoCard('ukTenancy','UK tenancy agreement','Deposits, notices, and liability.')),
@@ -566,7 +585,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
     ];
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
-      h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
+      h('p',{className:'payment-caption',role:serverOk==='…'?'status':undefined},h(Icon,{name:'lock',size:15}),serverOk==='…'?'Checking checkout availability…':'Payments in ZAR, securely processed by Paystack.'),
       h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits and retained reports on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment')),recoveredReports&&h('div',{className:'receipt-reports'},h('h3',null,'Your available reports'),h('p',null,'Reports remain available for up to 48 hours after the scan.'),recoveredReports.reports.length?h('ul',null,recoveredReports.reports.map(r=>h('li',{key:r.id},h('button',{type:'button',className:'secondary-button',disabled:unlocking,onClick:()=>reopenPaidReport({analysisId:r.id,reference:recoveredReports.reference,email:recoveredReports.email})},'Reopen report: '+r.title),h('p',null,(r.jurisdiction==='UK'?'United Kingdom':'South Africa')+' · retained until '+new Date(r.expiresAt).toLocaleString('en-ZA'))))):h('p',null,'No retained reports are available for this receipt.'))),
       h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
       h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
@@ -620,6 +639,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       h('nav',{className:'desktop-nav','aria-label':'Main navigation'},nav('Check a contract','landing'),nav('Pricing','pricing'),nav('Saved checklists','checklists'),nav('Privacy','privacy'),nav('Terms','terms'),nav('Contact','contact')),
       h('div',{className:'header-actions'},credits>0&&h('span',{className:'credits-badge'},credits+' '+(credits===1?'credit':'credits')),h('div',{className:'mobile-pricing'},nav('Pricing','pricing')),h('button',{className:'menu-toggle','aria-label':'Open navigation menu','aria-expanded':menuOpen,'aria-controls':'mobile-menu',onClick:()=>{suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setMenuOpen(true);}},h(Icon,{name:'menu',size:22}))))),
     h('div',{className:'app-shell',inert:checkout||menuOpen?'':undefined},
+      (serverOk==='offline'||reconnecting)&&h('div',{className:'service-status',role:'status'},h('div',null,h('strong',null,reconnecting?'Reconnecting…':'Connection needs attention'),h('p',null,reconnecting?'Checking service settings. Please wait a moment.':'Service settings could not load. Retry before starting a scan or payment.')),h('button',{type:'button',className:'secondary-button',disabled:reconnecting,onClick:()=>loadConfiguration(true)},reconnecting?'Reconnecting…':'Retry connection')),
       error&&h('div',{className:'error-banner',role:'alert'},h('p',null,error),h('button',{'aria-label':'Dismiss error',onClick:()=>setError('')},h(Icon,{name:'close',size:20}))),
       notice&&h('div',{className:'notice-banner',role:'status'},h('p',null,notice),h('button',{'aria-label':'Dismiss notification',onClick:()=>setNotice('')},h(Icon,{name:'close',size:20}))),
       h('main',{id:'main-content',tabIndex:-1},body),
