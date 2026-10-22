@@ -240,7 +240,7 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 .service-status{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-top:20px;padding:16px 20px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--ink)}
 .service-status>div{flex:1 1 240px;min-width:0;overflow-wrap:anywhere}
 .service-status strong{font-size:16px;line-height:1.4}
-.service-status p{font-size:14px;line-height:1.6;margin-top:4px;color:var(--muted)}
+.service-status p{font-size:14px;line-height:1.6;margin-top:4px;color:var(--ink)}
 .service-status button{min-height:44px;max-width:100%;white-space:normal}
 .error-banner button,.notice-banner button{width:44px;height:44px;min-width:44px;min-height:44px}
 .full-report-features{margin-top:24px;padding-top:12px;border-top:1px solid var(--line)}
