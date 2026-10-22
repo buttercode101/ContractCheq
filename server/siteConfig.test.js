@@ -74,6 +74,6 @@ test('edge host matching excludes suffix attacks and only exempts authenticated 
   for (const host of ['www.'+SITE_HOST, SITE_HOST+'.evil.test','evil'+SITE_HOST,'generated.vercel.app']) {
     assert.equal(matcher.test(host),false,host);
   }
-  assert.equal(rule.status,404);
+  assert.deepEqual(rule.mitigate,{action:'deny'});
   assert.equal(SITE_ORIGIN,'https://'+SITE_HOST);
 });
