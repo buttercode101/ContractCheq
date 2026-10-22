@@ -304,7 +304,7 @@ function App() {
     e.target.value = '';
   }
 
-  const startPay = ({amount, label, product})=>{
+  const startPay = ({amount, label, product, analysisId})=>{
     setError('');
     const key = config.paystackPublicKey;
     if(!key || !window.PaystackPop){
@@ -312,7 +312,7 @@ function App() {
       return;
     }
     const email = payEmail.trim();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product});return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product,analysisId});return;}
     setPayEmail(email);
     track('paywall_click',{product,amount});
     const handler = PaystackPop.setup({
@@ -321,7 +321,7 @@ function App() {
       amount,
       currency: 'ZAR',
       ref: 'CC-'+crypto.randomUUID(),
-      metadata: { product, analysisId: result?._id||'' },
+      metadata: { product, analysisId: analysisId||'' },
       callback: function(response){
         setRestoreRef(response.reference);
         saveLS({pendingReceipt:response.reference,email});
@@ -333,17 +333,17 @@ function App() {
           if(!v.ok) throw new Error(v.error||'Verification failed');
           setPaymentRef(v.grantId);
           setCredits(v.credits||0);
-          if(product==='single' && result?._id){
+          if(product==='single' && analysisId){
             const full = await fetchJSON(API+'/api/unlock-analysis',{
               method:'POST',headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({analysisId: result._id, reference: response.reference, email})
+              body: JSON.stringify({analysisId, reference: response.reference, email})
             });
             if(!full.isPaid) throw new Error(full.error||'Report unlock was not confirmed. Restore your receipt to retry.');
             rememberPaidReport(full,response.reference,email);
-            if(screen.current.view==='result'&&screen.current.result?._id===result._id)setResult(full);
+            if(screen.current.view==='result'&&screen.current.result?._id===analysisId)setResult(full);
             else setNotice('Your report was unlocked. Reopen it from your saved report shortcut or restore your receipt.');
             setCredits(full.credits||0);
-            setUnlocked(u=>[...new Set([...u, result._id])]);
+            setUnlocked(u=>[...new Set([...u, analysisId])]);
           } else {
             setCredits(c=>Math.max(c, v.credits||0));
             setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
@@ -389,7 +389,7 @@ function App() {
       setUnlocked(u=>[...new Set([...u, result._id])]);
       return;
     }
-    beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single'});
+    beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single',analysisId:result._id});
     } catch(e){if(reportRequest.current===current){if(e.message==='No report credits remaining'){setCredits(0);setPaymentRef('');}setError(e.message||'Unable to unlock this report. Please check your connection and try again.');window.scrollTo({top:0});}} finally {setUnlocking(false);finishReportRequest(current);}
   };
 

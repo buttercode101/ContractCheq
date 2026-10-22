@@ -107,3 +107,14 @@ test('stalled receipt requests abort and preserve an actionable no-repurchase me
  const pending=vm.runInContext("fetchJSON('/api/verify-payment',{method:'POST'})",ui.context);
  expire();await assert.rejects(pending,/restore your existing receipt; do not pay again/);assert.equal(aborted,true);
 });
+
+
+test('buying a single credit on Pricing never attempts to unlock a lingering example report',async()=>{
+ const network=deferredFetch();const example={...analyseContract('RESIDENTIAL LEASE. Deposit is non-refundable.','example.txt'),_id:'demo-lease',isPaid:true,isDemo:true};
+ const ui=browserJourney(network.fetch,{1:'pricing',2:{paystackPublicKey:'test-only',prices:{single:1900,pack3:3900,pack10:9900}},3:'online',15:example});
+ let checkout;ui.context.PaystackPop=ui.context.window.PaystackPop={setup(options){checkout=options;return{openIframe(){}};}};
+ ui.button('Buy R19').props.onClick();ui.find(n=>n.type==='input'&&n.props.id==='receipt-email').props.onChange({target:{value:'buyer@example.test'}});
+ ui.find(n=>n.type==='form'&&JSON.stringify(n.props.children).includes('receipt-email')).props.onSubmit({preventDefault(){}});assert.equal(checkout.metadata.analysisId,'');checkout.callback({reference:'CC-pricing-example-receipt'});
+ network.requests[0].resolve({ok:true,json:async()=>({ok:true,grantId:'CC-pricing-example-receipt',credits:1})});await settle();
+ assert.equal(network.requests.length,1);assert.equal(ui.state[17],1);assert.match(ui.state[9],/1 report credits added/);assert.equal(ui.state[14],'');
+});
