@@ -1,0 +1,6 @@
+// The test runner and its child processes must never inherit deployment credentials.
+for(const key of ['VERCEL','DATA_DIR','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN','BLOB_WEBHOOK_PUBLIC_KEY','CRON_SECRET',
+ 'PAYSTACK_SECRET_KEY','PAYSTACK_PUBLIC_KEY','OPENROUTER_API_KEY','OPENROUTER_MODEL','GROQ_API_KEY','GROQ_MODEL','TINYFISH_API_KEY',
+ 'AI_ENRICHMENT_ENABLED','AI_ENRICHMENT_MAX_CHARS','AI_ALLOW_GROQ_FALLBACK','AI_RESEARCH_ENABLED']) delete process.env[key];
+
+process.env.NODE_ENV='test';
