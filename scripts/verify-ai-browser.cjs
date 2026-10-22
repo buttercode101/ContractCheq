@@ -18,7 +18,8 @@ module.exports=async function verifyAI({browser,base,out,outDir,matrix,aiCalls,s
  await matrix(page,'ai-unavailable');setAIMode('success');
  // Load the actual public SDK without opening checkout or creating a transaction.
  const sdkPage=await (await browser.newContext({viewport:{width:390,height:844}})).newPage();sdkPage.on('pageerror',e=>out.errors.push(e.message));
- const sdkResponse=sdkPage.waitForResponse(r=>r.url()==='https://js.paystack.co/v1/inline.js');await sdkPage.goto(base,{waitUntil:'commit'});assert.equal((await sdkResponse).status(),200);await sdkPage.waitForFunction(()=>typeof window.PaystackPop?.setup==='function');await sdkPage.locator('.upload-panel').waitFor();
- out.checks.push('The real Paystack public SDK loads and exposes setup in the browser; checkout is not opened and no transaction is created');
+ let releaseSDK;const sdkGate=new Promise(resolve=>{releaseSDK=resolve;});await sdkPage.route('https://js.paystack.co/v1/inline.js',async route=>{await sdkGate;await route.continue();});
+ const sdkResponse=sdkPage.waitForResponse(r=>r.url()==='https://js.paystack.co/v1/inline.js');await sdkPage.goto(base,{waitUntil:'domcontentloaded'});await sdkPage.locator('.upload-panel').waitFor();assert.equal(await sdkPage.evaluate(()=>typeof window.PaystackPop),'undefined');releaseSDK();assert.equal((await sdkResponse).status(),200);await sdkPage.waitForFunction(()=>typeof window.PaystackPop?.setup==='function');
+ out.checks.push('The app renders while the payment SDK is deliberately delayed; the real SDK then loads and exposes setup without opening checkout or creating a transaction');
  out.checks.push('AI consent reaches the pinned OpenRouter request, labels grounded extras, keeps paid fields gated and returns a visible rules-based report after provider failure');
 };
