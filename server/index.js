@@ -360,7 +360,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/demo/:key', (req,res) => {
-  const sample = DEMO_SAMPLES[req.params.key];
+  const sample = Object.hasOwn(DEMO_SAMPLES,req.params.key) ? DEMO_SAMPLES[req.params.key] : null;
   if (!sample) return res.status(404).json({ error: 'Example not found' });
   const analysis = analyseContract(sample.text, sample.fileName, sample.jurisdiction);
   analysis.docTitle = sample.title;

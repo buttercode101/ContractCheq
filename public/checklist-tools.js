@@ -2,7 +2,7 @@
  'use strict';
  const KEY='cc_checklists_v1',MAX=10,MAX_ITEMS=80;
  const clean=(v,max)=>typeof v==='string'?v.slice(0,max):'';
- function validDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return false;const d=new Date(value+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;}
+ function validDate(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||value<'0001-01-01'||value>'9999-12-30')return false;const d=new Date(value+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;}
  function normalize(value){
   if(!value||value.version!==1||typeof value.id!=='string'||!value.id||value.id.length>150||typeof value.title!=='string'||!Array.isArray(value.items)||value.items.length>MAX_ITEMS)throw Error('This is not a supported checklist backup.');
   const ids=new Set();
@@ -11,7 +11,7 @@
    ids.add(item.id);const date=validDate(item.calendarDate)?item.calendarDate:'';
    return {id:item.id,kind:item.kind,label:clean(item.label,200),party:clean(item.party,100),sourceLabel:clean(item.sourceLabel,100),quote:clean(item.quote,1100),confirmed:item.confirmed===true,done:item.confirmed===true&&item.done===true,calendarDate:date,dateConfirmed:item.confirmed===true&&Boolean(date)&&item.dateConfirmed===true};
   });
-  return {version:1,id:value.id,title:clean(value.title,200),role:clean(value.role,40),savedAt:clean(value.savedAt,40),items};
+  return {version:1,id:value.id,title:clean(value.title,200),role:['neutral','tenant','landlord','employee','employer','freelancer','client'].includes(value.role)?value.role:'neutral',savedAt:clean(value.savedAt,40),items};
  }
  function read(storage){try{const raw=storage.getItem(KEY);if(!raw)return {entries:[],error:''};if(raw.length>1500000)throw Error('too large');const list=JSON.parse(raw);if(!Array.isArray(list)||list.length>MAX)throw Error('invalid');const entries=list.map(normalize);if(new Set(entries.map(e=>e.id)).size!==entries.length)throw Error('duplicate');return {entries,error:''};}catch(e){return {entries:[],error:'Saved checklists could not be read. Restore a valid backup or clear the saved checklist data.'};}}
  function write(storage,entries){try{if(entries.length>MAX)throw Error('limit');const safe=entries.map(normalize);const raw=JSON.stringify(safe);if(raw.length>1500000)throw Error('too large');storage.setItem(KEY,raw);return true;}catch(e){return false;}}

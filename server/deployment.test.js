@@ -69,3 +69,18 @@ test('keyboard and motion accessibility invariants remain in the shipped UI',()=
  assert.match(css,/:focus-visible/);
  assert.match(css,/prefers-reduced-motion/);
 });
+
+test('unknown demo identifiers never manufacture an empty low-risk report',async()=>{
+ const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+ try{
+  const base='http://127.0.0.1:'+server.address().port;
+  for(const key of ['__proto__','constructor','toString','hasOwnProperty','missing']){
+   const response=await fetch(base+'/api/demo/'+key);assert.equal(response.status,404,key);
+   const body=await response.json();assert.equal(body.error,'Example not found');assert.equal(body.score,undefined);
+  }
+  for(const key of ['lease','employment','ukTenancy']){
+   const response=await fetch(base+'/api/demo/'+key);assert.equal(response.status,200,key);const body=await response.json();
+   assert.ok(body.plainLanguageGuide.sections.length);assert.ok(body.actionPlan);assert.equal(body.isDemo,true);
+  }
+ }finally{server.close();}
+});
