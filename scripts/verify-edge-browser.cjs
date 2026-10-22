@@ -56,4 +56,18 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  await retry.getByLabel('Choose a contract document').setInputFiles(input);await retry.getByRole('alert').filter({hasText:'Synthetic analysis outage'}).waitFor();await retry.getByLabel('Choose a contract document').waitFor();
  await retry.unroute('**/api/analyze');await retry.getByLabel('Choose a contract document').setInputFiles(input);await retry.locator('.risk-gauge').waitFor();assert.equal(await retry.getByRole('alert').count(),0);
  out.checks.push('A failed upload surfaces its error and the same file succeeds after retry');
+
+ const landscape=await fresh();await landscape.setViewportSize({width:844,height:390});
+ await landscape.getByRole('button',{name:'Open navigation menu',exact:true}).click();
+ await landscape.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Saved checklists',exact:true}).click();
+ await landscape.getByRole('heading',{name:'Saved checklists',exact:true}).waitFor();assert.equal(new URL(landscape.url()).pathname,'/checklists');assert.equal(await landscape.getByRole('dialog').count(),0);
+ await landscape.goBack({waitUntil:'domcontentloaded'});await landscape.locator('.upload-panel').waitFor();assert.equal(new URL(landscape.url()).pathname,'/');
+ await landscape.getByRole('button',{name:'Pricing',exact:true}).click();await landscape.getByRole('button',{name:'Buy R19',exact:true}).click();
+ const modal=landscape.getByRole('dialog');await modal.waitFor();await modal.getByLabel('Email address',{exact:true}).fill('invalid');await modal.getByRole('button',{name:'Continue to Paystack',exact:true}).click();
+ assert.equal(await modal.getByLabel('Email address',{exact:true}).evaluate(el=>el.validity.valid),false);assert(await modal.isVisible());
+ const box=await modal.boundingBox();assert(box.height<=390,'Landscape checkout must fit the viewport');
+ await landscape.keyboard.press('Escape');assert.equal(await landscape.getByRole('dialog').count(),0);assert.equal(await landscape.getByRole('button',{name:'Buy R19',exact:true}).evaluate(el=>el===document.activeElement),true);
+ assert(await landscape.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ out.checks.push('844x390 landscape: mobile navigation, history back, checkout scrolling, invalid email and Escape focus restoration pass');
+
 };
