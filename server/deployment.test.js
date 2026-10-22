@@ -84,3 +84,13 @@ test('unknown demo identifiers never manufacture an empty low-risk report',async
   }
  }finally{server.close();}
 });
+
+test('malformed JSON cannot write submitted contract text into runtime error logs',async()=>{
+ const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+ const original=console.error,logged=[];console.error=(...args)=>logged.push(args);
+ const canary='PRIVATE-CONTRACT-JSON-CANARY';
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port+'/api/analyze-text',{method:'POST',headers:{'content-type':'application/json'},body:'{"text":"'+canary+'","jurisdiction":'});
+  assert.equal(response.status,400);assert.equal(JSON.stringify(logged).includes(canary),false);
+ }finally{console.error=original;server.close();}
+});

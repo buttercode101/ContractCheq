@@ -5,9 +5,11 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  const backup=JSON.parse(fs.readFileSync(outDir+'/checklist-'+out.browser+'.json','utf8'));
  async function fresh(path='/'){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
-  page.setDefaultTimeout(20000);page.on('pageerror',e=>out.errors.push(e.message));
+  page.setDefaultTimeout(20000);page.on('pageerror',e=>{out.errors.push(e.message);console.error('edge-page-error',JSON.stringify({url:page.url(),message:e.message,stack:e.stack}));});
   await page.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Checkout is not used in failure recovery. */'}));
-  await page.goto(base+path,{waitUntil:'domcontentloaded'});return page;
+  // Wait for startup API bodies before intentionally reloading a test context.
+  const ready=Promise.all(['/api/config','/api/events'].map(route=>page.waitForResponse(r=>r.url()===base+route).then(r=>r.finished())));
+  await page.goto(base+path,{waitUntil:'domcontentloaded'});await ready;return page;
  }
  const page=await fresh('/checklists');
  const poisoned={...backup,id:'untrusted-import',title:'Imported edge checklist',role:'__proto__',items:backup.items.map((i,n)=>n===0?{...i,quote:'<img src=x onerror="window.injectedBackup=true"> Client must pay after acceptance.'}:i)};

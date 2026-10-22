@@ -503,8 +503,10 @@ app.get('*', (req,res,next)=> { if (req.path.startsWith('/api')) return next(); 
 
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError) return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `File too large (max ${MAX_FILE_MB}MB)` : err.message });
-  console.error(err);
-  res.status(err.status || 500).json({ error: err.status && err.status < 500 ? err.message : 'The service is temporarily unavailable. Please try again.' });
+  const status = Number(err.status) || 500;
+  // Parser errors carry submitted request bodies; client mistakes must not retain contract text in logs.
+  if (status >= 500) console.error(err);
+  res.status(status).json({ error: status < 500 ? err.message : 'The service is temporarily unavailable. Please try again.' });
 });
 
 if (require.main === module) app.listen(PORT, () => {
