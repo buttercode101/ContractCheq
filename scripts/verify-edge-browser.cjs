@@ -98,4 +98,23 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix,bounde
  await stalled.getByRole('alert').filter({hasText:'do not pay again'}).waitFor();assert(await stalled.getByRole('button',{name:'Restore existing payment'}).isEnabled());releaseReceipt();
  out.checks.push('Delayed payment completion retains recovery without overwriting later navigation; stalled receipt requests time out, preserve the reference and allow retry without paying again');await stalled.context().close();
 
+ // A failed initial configuration must recover in-place, on every layout.
+ const reconnect=await fresh();
+ await reconnect.route('**/api/config',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic configuration outage'})}));
+ await reconnect.reload({waitUntil:'domcontentloaded'});
+ await reconnect.getByRole('button',{name:'Retry connection',exact:true}).waitFor();
+ assert(await reconnect.getByRole('checkbox',{name:/Add AI insights/}).isDisabled());
+ await reconnect.getByRole('button',{name:'Pricing',exact:true}).click();
+ assert(await reconnect.getByRole('button',{name:'Buy R19',exact:true}).isDisabled());
+ await matrix(reconnect,'connection-recovery');
+ await reconnect.unroute('**/api/config');
+ await reconnect.getByRole('button',{name:'Retry connection',exact:true}).click();
+ await reconnect.locator('.service-status').waitFor({state:'hidden'});
+ assert(await reconnect.getByRole('button',{name:'Buy R19',exact:true}).isEnabled());
+ await reconnect.getByRole('button',{name:'ContractCheck home',exact:true}).click();
+ assert(await reconnect.getByRole('checkbox',{name:/Add AI insights/}).isEnabled());
+ assert.equal(await reconnect.getByRole('checkbox',{name:/Add AI insights/}).isChecked(),false);
+ out.checks.push('Configuration outage keeps checkout and AI disabled, renders accessible recovery at every tested width, and retries in-place without restoring AI consent');
+ await reconnect.context().close();
+
 };

@@ -169,15 +169,32 @@ function App() {
   const [recoveredReports,setRecoveredReports]=useState(null);
 
   const [perspective,setPerspective] = useState('neutral');
+  const [reconnecting,setReconnecting] = useState(false);
   const screen=useRef(null);screen.current={view,result};
+  const configRequest=useRef(null);
+
+  async function loadConfiguration(retry=false) {
+    configRequest.current?.abort();
+    const controller=new AbortController();
+    configRequest.current=controller;
+    if(retry===true)setReconnecting(true);
+    setEnrichLLM(false);
+    setServerOk('…');
+    try {
+      const c=await fetchJSON(API+'/api/config',{signal:controller.signal});
+      if(!c.prices||!['single','pack3','pack10'].every(key=>Number.isInteger(c.prices[key])&&c.prices[key]>0))throw new Error('Configuration unavailable');
+      if(configRequest.current!==controller||controller.signal.aborted)return;
+      setConfig(c);
+      setServerOk('online');
+    } catch (_) {
+      if(configRequest.current===controller&&!controller.signal.aborted)setServerOk('offline');
+    } finally {if(configRequest.current===controller)setReconnecting(false);}
+  }
 
   useEffect(function() {
     track('page_view', {});
-    fetch(API + '/api/config').then(function(r) { return r.json(); }).then(function(c) {
-      if(!c.prices || typeof c.prices.single !== 'number')throw new Error('Configuration unavailable');
-      setConfig(c);
-      setServerOk('online');
-    }).catch(function() { setServerOk('offline'); });
+    loadConfiguration();
+    return ()=>configRequest.current?.abort();
   }, []);
 
   useEffect(function() {
@@ -185,6 +202,8 @@ function App() {
   }, [credits, unlocked, payEmail, notes, paymentRef]);
 
   useEffect(()=>{
+    const titles={landing:'Understand your contract before you sign',pricing:'Pricing',checklists:'Saved checklists',privacy:'Privacy',terms:'Terms',contact:'Contact',result:'Your report'};
+    document.title=(titles[view]||titles.landing)+' | ContractCheck';
     window.scrollTo({top:0,behavior:'instant'});
     if(!initialView.current)document.getElementById('main-content')?.focus({preventScroll:true});
     initialView.current=false;
@@ -509,9 +528,9 @@ function App() {
 h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'),
           h('select',{id:'perspective','aria-describedby':'role-hint',value:perspective,disabled:scanning,onChange:e=>setPerspective(e.target.value)},['neutral','tenant','landlord','employee','employer','freelancer','client'].map(role=>h('option',{key:role,value:role},role==='neutral'?'General review':role==='freelancer'?'Freelancer / service provider':role.charAt(0).toUpperCase()+role.slice(1)))),
           h('p',{className:'role-hint',id:'role-hint'},'Tailors questions in the full report. Your role does not change the risk score.')),
-          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning||config.aiEnrichmentEnabled===false,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},config.aiEnrichmentEnabled===false?'AI insights are currently unavailable. The rules-based report still works.':'AI reviews up to '+(config.aiMaxChars||4000)+' characters via '+(config.aiGroqFallback?'OpenRouter or Groq':'OpenRouter')+'. Redaction is limited; names and other identifying details may remain.'))),
-          h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Uploaded file deleted after processing. Report access expires after 48 hours; stored report text is removed at the next daily cleanup, up to 24 hours later. ',h('button',{onClick:()=>go('privacy')},'Privacy details'))),
-          serverOk==='offline'&&h('p',{role:'status',className:'connection-note'},'Connection unavailable. Please try again shortly.'))),
+          h('label',{className:'ai-option'},h('input',{type:'checkbox',checked:enrichLLM,disabled:scanning||serverOk!=='online'||!config.aiEnrichmentEnabled,onChange:e=>setEnrichLLM(e.target.checked)}),h('span',null,h('strong',null,'Add AI insights ',h('span',{className:'optional-label'},'Optional')),h('span',{className:'ai-disclosure'},serverOk==='…'?'Checking AI availability. AI stays off while settings load.':serverOk==='offline'?'Could not check AI availability. Retry the connection to check again.':!config.aiEnrichmentEnabled?'AI insights are currently unavailable. The rules-based report still works.':'AI reviews up to '+(config.aiMaxChars||4000)+' characters via '+(config.aiGroqFallback?'OpenRouter or Groq':'OpenRouter')+'. Redaction is limited; names and other identifying details may remain.'))),
+          h('div',{className:'upload-foot'},h(Icon,{name:'lock',size:14}),h('span',null,'Uploaded file deleted after processing. Report access expires after 48 hours; stored report text is removed at the next daily cleanup, up to 24 hours later. ',h('button',{onClick:()=>go('privacy')},'Privacy details')))
+        )),
       h('section',{className:'how-section','aria-label':'How it works'},h('div',{className:'how-grid'},[['01','Upload','Choose your rules and add a document.'],['02','Understand','Read your score and the flagged clauses.'],['03','Decide','Take the next step with a clearer picture.']].map(x=>h('div',{key:x[0],className:'how-item'},h('span',{className:'how-num'},x[0]),h('div',null,h('h3',null,x[1]),h('p',null,x[2])))))),
       h('section',{className:'examples-section'},h('div',{className:'section-heading'},h('div',null,h('div',{className:'eyebrow'},'A look inside'),h('h2',null,'Know what to expect.'),h('p',null,'Explore a full example report before you upload.')),h('span',{className:'section-caption'},'Sample documents · Real rule-engine results')),
         h('div',{className:'example-grid'},demoCard('lease','Residential lease','Access, deposits, and personal data.'),demoCard('employment','Employment offer','Working hours, overtime, and your rights.'),demoCard('ukTenancy','UK tenancy agreement','Deposits, notices, and liability.')),
@@ -558,17 +577,19 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
   if(view==='checklists'){body=window.ContractChecklist&&window.ContractActionsUI?h(window.ContractActionsUI.SavedChecklists):h('section',{className:'document-page'},h('h1',null,'Saved checklists'),h('p',{role:'alert'},'Checklist tools could not load. Refresh this page to try again.'));}
 
   if(view==='pricing'){
+    const fullFeatures=['Contract explained in everyday language','Original wording beside each explanation','Legal words, costs, deadlines and questions to ask','Bottom-line sign / negotiate / stop guidance','Every risk + missing-protection check','Prioritized actions and negotiation points','Source-linked payment and obligation summaries','Device-only checklists and confirmed calendar dates','Editable questions to copy and share','Downloadable decision-ready PDF'];
     const plans=[
       {product:'free',label:'Free scan',price:'R0',sub:'A first look, without a commitment.',cta:'Upload a contract',features:['Your risk score and risk level','Analysis of the first 3 flags','SA or UK rules'],note:'No payment needed.'},
-      {product:'single',label:'Full report',price:'R19',sub:'One contract. The complete picture.',cta:'Buy R19',amount:config.prices.single,features:['Contract explained in everyday language','Original wording beside each explanation','Legal words, costs, deadlines and questions to ask','Bottom-line sign / negotiate / stop guidance','Every risk + missing-protection check','Prioritized actions and negotiation points','Source-linked payment and obligation summaries','Device-only checklists and confirmed calendar dates','Editable questions to copy and share','Downloadable decision-ready PDF'],note:'All full-report features included.',featured:true},
+      {product:'single',label:'Full report',price:'R19',sub:'One contract. Clearer next steps.',cta:'Buy R19',amount:config.prices.single,features:['Plain-language contract guide','Every flagged issue and practical next steps','Payment summaries and saved checklists','PDF export and private notes'],note:'All full-report features included.',featured:true},
       {product:'pack3',label:'3 reports',price:'R39',sub:'A few agreements to work through.',cta:'Buy R39',amount:config.prices.pack3,features:['Plain-language guide in every report','3 full-report unlock credits','R13 per report','Use on SA or UK contracts'],note:'All full-report features included.'},
       {product:'pack10',label:'10 reports',price:'R99',sub:'For your next set of contracts.',cta:'Buy R99',amount:config.prices.pack10,features:['Plain-language guide in every report','10 full-report unlock credits','R9.90 per report','Use on SA or UK contracts'],note:'All full-report features included.'}
     ];
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
-      h('p',{className:'payment-caption'},h(Icon,{name:'lock',size:15}),'Payments in ZAR, securely processed by Paystack.'),serverOk==='offline'&&h('p',{className:'connection-note'},'Checkout is currently unavailable. Please try again shortly.'),
+      h('p',{className:'payment-caption',role:serverOk==='…'?'status':undefined},h(Icon,{name:'lock',size:15}),serverOk==='…'?'Checking checkout availability…':'Payments in ZAR, securely processed by Paystack.'),
       h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits and retained reports on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment')),recoveredReports&&h('div',{className:'receipt-reports'},h('h3',null,'Your available reports'),h('p',null,'Reports remain available for up to 48 hours after the scan.'),recoveredReports.reports.length?h('ul',null,recoveredReports.reports.map(r=>h('li',{key:r.id},h('button',{type:'button',className:'secondary-button',disabled:unlocking,onClick:()=>reopenPaidReport({analysisId:r.id,reference:recoveredReports.reference,email:recoveredReports.email})},'Reopen report: '+r.title),h('p',null,(r.jurisdiction==='UK'?'United Kingdom':'South Africa')+' · retained until '+new Date(r.expiresAt).toLocaleString('en-ZA'))))):h('p',null,'No retained reports are available for this receipt.'))),
       h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
+      h('details',{className:'full-report-features'},h('summary',null,'See everything included in every paid report'),h('ul',null,fullFeatures.map(f=>h('li',{key:f},f)))),
       h('section',{className:'faq-section'},h('h2',null,'Before you check out'),[
         ['How do report credits work?','Each credit unlocks one full report. Restore your Paystack reference and receipt email on the Pricing page to recover remaining credits and reopen already-unlocked reports on another device while retained. Analysis results are available for 48 hours after your scan; download an unlocked report for your records.'],
         ['What is the plain-language contract guide?','Every paid report includes a source-linked reading guide: simpler wording for common legal phrases, topic explanations, exact money and time wording, legal-word definitions and questions to ask. Original wording stays beside the explanation. It covers extracted text, not unreadable sections or missing attachments. Unrecognised wording and cross-references are marked for closer reading. The guide does not require optional AI insights.'],
@@ -582,11 +603,17 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
   if (view === 'privacy') {
     body = h('section', {className: 'document-page'},
       h('h1', {className: 'serif'}, 'Privacy Policy'),
+      h('h2', null, 'Documents and reports'),
       h('p', null, 'Files are processed to extract text and produce a risk report and a plain-language reading guide. We do not sell your documents.'),
+      h('h2', null, 'Storage and retention'),
       h('p', null, 'Uploaded files are deleted from the server after processing. Analysis results, including extracted wording in the reading guide, are stored privately and become unavailable after 48 hours. Expired records are physically removed on the next daily cleanup; deletion can therefore occur up to 24 hours later. Private notes are saved in your browser on this device.'),
+      h('h2', null, 'Checklists and calendar files'),
       h('p', null, 'Saving a checklist is optional. Saved checklists include the listed clause excerpts, your progress and confirmed dates. They stay in this browser until you remove them or clear browser data, beyond the server report’s 48-hour access window. They are not synced or emailed. Other users of this browser may see them. Download and keep a private backup to restore a checklist on another device. Calendar export includes only dates you explicitly confirm; it does not calculate conditional deadlines or send reminders.'),
+      h('h2', null, 'Payment records and usage events'),
       h('p', null, 'Payment-credit records retain your receipt email, purchase details and report identifiers so unused credits can be restored. These records and limited usage events do not currently have automatic deletion schedules. Usage events exclude document wording, filenames, email addresses and payment references.'),
+      h('h2', null, 'Optional AI providers'),
       h('p', null, 'Optional AI enrichment requires both server enablement and your choice for that upload. A limited excerpt may be sent to OpenRouter and its model provider. Requests require providers with a zero-retention policy and disallow data collection. Groq fallback is off unless explicitly enabled on the server. Common email, phone and ID patterns are redacted, but names, addresses and other identifying details may remain. External research is off by default; when separately enabled, TinyFish receives generic legal-topic queries. Each provider applies its own terms. Leave AI insights off to use only the rules engine.'),
+      h('h2', null, 'Payment processing'),
       h('p', null, 'Payments are processed by Paystack. We receive payment confirmation, not your full card number.'),
       h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
@@ -595,9 +622,13 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
   if (view === 'terms') {
     body = h('section', {className: 'document-page'},
       h('h1', {className: 'serif'}, 'Terms of Use'),
+      h('h2', null, 'What the service does'),
       h('p', null, 'ContractCheck provides automated contract explanations and risk triage. It is not a law firm and does not provide legal advice. No attorney–client relationship is created.'),
+      h('h2', null, 'Reading-guide limits'),
       h('p', null, 'We explain common contract wording and identify potential issues. The reading guide is not a replacement contract, a complete legal review or a decision about enforceability. We do not draft replacement clauses for you.'),
+      h('h2', null, 'Professional advice'),
       h('p', null, 'Results may be incomplete or incorrect. Always consult a qualified attorney for decisions that matter.'),
+      h('h2', null, 'Payments and refunds'),
       h('p', null, 'Pricing: digital delivery after Paystack verification. Refunds case-by-case if unlock fails after successful payment (provide reference).'),
       h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
@@ -606,9 +637,8 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
   if (view === 'contact') {
     body = h('section', {className: 'document-page contact-page'},
       h('h1', {className: 'serif'}, 'Contact'),
-      h('p', {className: 'document-copy'}, 'Support & payment issues'),
-      h('p', {className: 'document-copy'}, 'Email buttercode101@gmail.com if a successful payment does not unlock your report. Keep your payment reference and receipt email so the payment can be traced.'),
-      h('p', {className: 'document-copy'}, 'Include your Paystack reference for payment problems.'),
+      h('h2', null, 'Support and payment issues'),
+      h('p', {className: 'document-copy'}, 'Email ',h('a',{href:'mailto:buttercode101@gmail.com'},'buttercode101@gmail.com'),' if a successful payment does not unlock your report. Keep your Paystack reference and receipt email so the payment can be traced.'),
       h('button', {onClick: function() { go('landing'); }, className: 'text-button'}, '← Back')
     );
   }
@@ -620,6 +650,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       h('nav',{className:'desktop-nav','aria-label':'Main navigation'},nav('Check a contract','landing'),nav('Pricing','pricing'),nav('Saved checklists','checklists'),nav('Privacy','privacy'),nav('Terms','terms'),nav('Contact','contact')),
       h('div',{className:'header-actions'},credits>0&&h('span',{className:'credits-badge'},credits+' '+(credits===1?'credit':'credits')),h('div',{className:'mobile-pricing'},nav('Pricing','pricing')),h('button',{className:'menu-toggle','aria-label':'Open navigation menu','aria-expanded':menuOpen,'aria-controls':'mobile-menu',onClick:()=>{suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setMenuOpen(true);}},h(Icon,{name:'menu',size:22}))))),
     h('div',{className:'app-shell',inert:checkout||menuOpen?'':undefined},
+      (serverOk==='offline'||reconnecting)&&h('div',{className:'service-status',role:'status'},h('div',null,h('strong',null,reconnecting?'Reconnecting…':'Connection needs attention'),h('p',null,reconnecting?'Checking service settings. Please wait a moment.':'Service settings could not load. Retry before starting a scan or payment.')),h('button',{type:'button',className:'secondary-button',disabled:reconnecting,onClick:()=>loadConfiguration(true)},reconnecting?'Reconnecting…':'Retry connection')),
       error&&h('div',{className:'error-banner',role:'alert'},h('p',null,error),h('button',{'aria-label':'Dismiss error',onClick:()=>setError('')},h(Icon,{name:'close',size:20}))),
       notice&&h('div',{className:'notice-banner',role:'status'},h('p',null,notice),h('button',{'aria-label':'Dismiss notification',onClick:()=>setNotice('')},h(Icon,{name:'close',size:20}))),
       h('main',{id:'main-content',tabIndex:-1},body),

@@ -97,7 +97,7 @@ body{background:radial-gradient(circle at 78% 4%,rgba(15,98,77,.045),transparent
 
 .receipt-reports{margin-top:24px;border-top:1px solid var(--line);padding-top:20px}.receipt-reports ul{list-style:none;padding:0;margin:16px 0 0}.receipt-reports li+li{margin-top:18px}.receipt-reports button{width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;justify-content:flex-start}.receipt-reports li p{font-size:.8rem;color:var(--muted)}
 
-/* Audited reading hierarchy and task placement, shared across every product view. */
+/* Shared reading hierarchy and task placement across product views. */
 :root{--text-caption:.8125rem;--text-body:1rem;--space-section:48px}
 body{font-size:var(--text-body);background:var(--paper)}
 h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
@@ -235,3 +235,19 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 .payment-group[open]>summary::after,.action-source[open]>summary::after,.action-date[open]>summary::after{content:'−'}
 /* Keep navigation contrast stable over every scrolled report state. */
 .site-header{background:var(--paper)}
+
+/* Connection recovery uses the same controls and spacing on every view. */
+.service-status{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-top:20px;padding:16px 20px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--ink)}
+.service-status>div{flex:1 1 240px;min-width:0;overflow-wrap:anywhere}
+.service-status strong{font-size:16px;line-height:1.4}
+.service-status p{font-size:14px;line-height:1.6;margin-top:4px;color:var(--ink)}
+.service-status button{min-height:44px;max-width:100%;white-space:normal}
+.error-banner button,.notice-banner button{width:44px;height:44px;min-width:44px;min-height:44px}
+.full-report-features{margin-top:24px;padding-top:12px;border-top:1px solid var(--line)}
+.full-report-features summary{min-height:48px;align-content:center;cursor:pointer;color:var(--accent);font-size:16px;font-weight:600;line-height:1.6}
+.full-report-features ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;padding-left:20px;margin:16px 0}
+.full-report-features li{font-size:15px;line-height:1.6;padding-left:4px}
+@media(max-width:640px){.full-report-features ul{grid-template-columns:1fr}}
+.document-page h2{font-size:19px;line-height:1.4;margin-top:28px;letter-spacing:-.2px}
+.document-page h2+p{margin-top:10px}
+.document-page a{overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
