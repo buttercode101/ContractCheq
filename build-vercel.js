@@ -11,5 +11,5 @@ fs.writeFileSync(path.join(fn, '.vc-config.json'), JSON.stringify({runtime:'node
 fs.cpSync(path.join(__dirname, 'public'), path.join(out, 'static'), {recursive:true});
 const vendor=path.join(out,'static','vendor'); fs.mkdirSync(vendor,{recursive:true});
 for(const [name,file] of Object.entries(require('./server/vendorAssets')))fs.copyFileSync(file,path.join(vendor,name));
-fs.writeFileSync(path.join(out, 'config.json'), JSON.stringify({version:3,routes:[{src:'/.*',headers:require('./server/securityHeaders').securityHeaders(),continue:true},{src:'/api/.*',dest:'/api/index'},{handle:'filesystem'},{src:'/.*',dest:'/index.html'}]}));
+fs.writeFileSync(path.join(out, 'config.json'), JSON.stringify({version:3,routes:[...require('./server/siteConfig').hostRoutes,{src:'/.*',headers:require('./server/securityHeaders').securityHeaders(),continue:true},{src:'/api/.*',dest:'/api/index'},{handle:'filesystem'},{src:'/.*',dest:'/index.html'}]}));
 console.log('Packaged application with PDF and OCR runtime assets.');
