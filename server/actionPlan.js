@@ -19,7 +19,7 @@ function buildActionPlan(guide, docType, perspective, reportDates = []) {
    const text=s.original;
    const payer=text.match(new RegExp('\\b(?:the )?('+actors+')\\s+(?:shall|must|will|agrees to)\\s+pay\\b','i'));
    const recipient=text.match(new RegExp('\\bpay\\s+(?:the )?('+actors+')\\b','i')) || text.match(new RegExp('\\bpay\\b[^.!?]{0,120}\\bto\\s+(?:the )?('+actors+')\\b','i'));
-   const row={id:idFor(id+'|'+s.sourceLabel+'|'+text),...evidence(s),amounts:[...new Set(s.amounts||[])],timing:[...new Set(s.timeTerms||[])],payer:payer?payer[1]:'Unclear — confirm',recipient:recipient?recipient[1]:'Unclear — confirm',status:'Needs confirmation',conditional:/\b(?:if|unless|after|upon|following|subject to|provided|within|acceptance|approval)\b/i.test(text)};
+   const row={id:idFor(id+'|'+s.sourceLabel+'|'+text),...evidence(s),amounts:[...new Set(s.amounts||[])],timing:[...new Set([...(s.timeTerms||[]),...(text.match(/\b(?:per|each|every)\s+(?:(?:calendar|business)\s+)?(?:day|week|month|quarter|year)\b|\b(?:daily|weekly|fortnightly|monthly|quarterly|annually|yearly|on demand|on receipt|upon receipt)\b/gi)||[])])],payer:payer?payer[1]:'Unclear — confirm',recipient:recipient?recipient[1]:'Unclear — confirm',status:'Needs confirmation',conditional:/\b(?:if|unless|after|upon|following|subject to|provided|within|acceptance|approval)\b/i.test(text)};
    rows.push(row); return row;
   });
   return {id,title,status:matches.length?'Wording found — confirm details':'Not found in reviewed text',entries,additionalMatches:Math.max(0,matches.length-entries.length)};

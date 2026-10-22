@@ -34,3 +34,8 @@ test('unreadable storage and duplicate reports cannot silently erase saved check
  const e=entry();const duplicates={getItem:()=>JSON.stringify([e,e]),setItem:()=>assert.fail('must not overwrite corrupt storage')};assert.ok(tools.read(duplicates).error);assert.throws(()=>tools.save(duplicates,e));
  const nested=entry();nested.items[0].done=true;nested.items[0].dateConfirmed=true;nested.items[0].calendarDate='2026-11-30';const normalized=tools.normalize(nested);assert.equal(normalized.items[0].done,false);assert.equal(normalized.items[0].dateConfirmed,false);
 });
+
+test('payment summary keeps recurring timing exactly as written',()=>{
+ const r=analyseContract('RESIDENTIAL LEASE. The tenant shall pay R8000 per month. Rent is invoiced monthly.','recurring','ZA','tenant');
+ const rows=r.actionPlan.paymentSummary[0].entries;assert.ok(rows.some(row=>row.timing.includes('per month')));assert.ok(rows.some(row=>row.timing.includes('monthly')));assert.ok(r.actionPlan.items.every(i=>i.calendarDate===''));
+});
