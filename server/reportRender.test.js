@@ -132,3 +132,16 @@ test('failed optional AI is visible while the rules report remains readable',()=
  const result={...specimen(),isPaid:false,llmEnriched:false,aiStatus:'unavailable'};
  const html=renderToStaticMarkup(reportTree(result));assert.ok(html.includes('AI insights could not be added. Your rules-based report is ready.'));assert.ok(html.includes('findings-list'));assert.ok(!html.includes('Optional AI insights included.'));
 });
+
+
+test('OpenRouter and Groq findings are individually identified in reports and exports',()=>{
+ for(const source of ['openrouter','groq']){
+  const result={...specimen(),isPaid:true};result.issues[0].source=source;
+  const html=renderToStaticMarkup(reportTree(result));assert.match(html,/class="ai-tag">AI-suggested/);
+  const output=[];
+  class PDF{setFontSize(){}splitTextToSize(t){return [t];}text(t){output.push(t);}addPage(){}save(){}}
+  const tree=reportTree(result,{jspdf:{jsPDF:PDF}});
+  function find(node){if(!node||typeof node!=='object')return;if(Array.isArray(node))return node.map(find).find(Boolean);if(node.type==='button'&&JSON.stringify(node.props.children).includes('Export PDF'))return node;return find(node.props?.children);}
+  find(tree).props.onClick();assert.ok(output.some(t=>t.startsWith('AI-suggested finding')));
+ }
+});

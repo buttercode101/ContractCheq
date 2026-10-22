@@ -56,3 +56,25 @@ test('section numbers are not mistaken for rand amounts or minimum financial exp
  const paid=analyseContract('RESIDENTIAL LEASE. The rent is R8000. The deposit is non-refundable.','lease.txt');
  assert.match(paid.exposure,/An amount of R/);assert.ok(!paid.exposure.includes('At least'));
 });
+
+
+test('a separate negative obligation cannot suppress a later unsafe clause in the same sentence',()=>{
+ for(const text of [
+  'RESIDENTIAL LEASE. Tenant must not delay rent payments and landlord may enter the dwelling without notice.',
+  'RESIDENTIAL LEASE. Tenant must not delay rent payments, but landlord may enter the dwelling without notice.'
+ ])assert.ok(analyseContract(text,'lease.txt').issues.some(i=>i.id.startsWith('rha-entry-')),text);
+ const deposit=analyseContract('RESIDENTIAL LEASE. The tenant may not assign this lease, and the deposit is non-refundable.','lease.txt');
+ assert.ok(deposit.issues.some(i=>i.id.startsWith('rha-dep-')));
+ const prohibited=analyseContract('RESIDENTIAL LEASE. Landlord may enter the dwelling without notice and tenant interference is prohibited.','lease.txt');
+ assert.ok(prohibited.issues.some(i=>i.id.startsWith('rha-entry-')));
+ for(const text of ['Landlord may not enter the dwelling without notice.','It is prohibited to enter the dwelling without notice.'])
+  assert.ok(!analyseContract('RESIDENTIAL LEASE. '+text,'lease.txt').issues.some(i=>i.id.startsWith('rha-entry-')),text);
+});
+
+
+test('coordinated protected actions and objects keep their shared prohibition',()=>{
+ const lease=analyseContract('RESIDENTIAL LEASE. Landlord must not inspect the dwelling at any time and enter the dwelling without notice.','lease.txt');
+ assert.ok(!lease.issues.some(i=>i.id.startsWith('rha-entry-')));
+ const service=analyseContract('SERVICES AGREEMENT. Any attempt to exclude liability for death and personal injury is prohibited.','service.txt','UK');
+ assert.ok(!service.issues.some(i=>i.id.startsWith('uk-unfair-')));
+});

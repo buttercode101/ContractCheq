@@ -37,6 +37,25 @@ async function track(name, props) {
   } catch (e) {}
 }
 
+async function fetchJSON(url, options = {}) {
+  const controller = new AbortController();
+  const parent = options.signal;
+  const abort = () => controller.abort();
+  if (parent?.aborted) abort();
+  parent?.addEventListener('abort', abort, {once:true});
+  let timedOut = false;
+  const timer = setTimeout(() => {timedOut=true;controller.abort();}, 25000);
+  try {
+    const response = await fetch(url, {...options, signal:controller.signal});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'The request failed. Please try again.');
+    return data;
+  } catch (error) {
+    if (timedOut) throw new Error('The request took too long. Please retry or restore your existing receipt; do not pay again.');
+    throw error;
+  } finally {clearTimeout(timer);parent?.removeEventListener('abort', abort);}
+}
+
 function loadLS() {
   try {
     const value=JSON.parse(localStorage.getItem('cc_v3') || '{}');
@@ -148,6 +167,7 @@ function App() {
   const [recoveredReports,setRecoveredReports]=useState(null);
 
   const [perspective,setPerspective] = useState('neutral');
+  const screen=useRef(null);screen.current={view,result};
 
   useEffect(function() {
     track('page_view', {});
@@ -194,7 +214,7 @@ function App() {
     clearTimeout(current.timer);
     if(reportRequest.current===current){reportRequest.current=null;setScanning(false);setScanMsg('');}
   }
-  function go(v){cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  function go(v){screen.current.view=v;cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
   useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
   function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
   function rememberPaidReport(full,reference,email){
@@ -284,7 +304,7 @@ function App() {
     e.target.value = '';
   }
 
-  const startPay = ({amount, label, product})=>{
+  const startPay = ({amount, label, product, analysisId})=>{
     setError('');
     const key = config.paystackPublicKey;
     if(!key || !window.PaystackPop){
@@ -292,7 +312,7 @@ function App() {
       return;
     }
     const email = payEmail.trim();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product});return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product,analysisId});return;}
     setPayEmail(email);
     track('paywall_click',{product,amount});
     const handler = PaystackPop.setup({
@@ -301,28 +321,29 @@ function App() {
       amount,
       currency: 'ZAR',
       ref: 'CC-'+crypto.randomUUID(),
-      metadata: { product, analysisId: result?._id||'' },
+      metadata: { product, analysisId: analysisId||'' },
       callback: function(response){
         setRestoreRef(response.reference);
         saveLS({pendingReceipt:response.reference,email});
-        fetch(API+'/api/verify-payment',{
+        fetchJSON(API+'/api/verify-payment',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({reference: response.reference, email, product})
-        }).then(r=>r.json()).then(async v=>{
+        }).then(async v=>{
           if(!v.ok) throw new Error(v.error||'Verification failed');
           setPaymentRef(v.grantId);
           setCredits(v.credits||0);
-          if(product==='single' && result?._id){
-            const full = await fetch(API+'/api/unlock-analysis',{
+          if(product==='single' && analysisId){
+            const full = await fetchJSON(API+'/api/unlock-analysis',{
               method:'POST',headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({analysisId: result._id, reference: response.reference, email})
-            }).then(r=>r.json());
-            if(full.error) throw new Error(full.error);
+              body: JSON.stringify({analysisId, reference: response.reference, email})
+            });
+            if(!full.isPaid) throw new Error(full.error||'Report unlock was not confirmed. Restore your receipt to retry.');
             rememberPaidReport(full,response.reference,email);
-            setResult(full);
+            if(screen.current.view==='result'&&screen.current.result?._id===analysisId)setResult(full);
+            else setNotice('Your report was unlocked. Reopen it from your saved report shortcut or restore your receipt.');
             setCredits(full.credits||0);
-            setUnlocked(u=>[...new Set([...u, result._id])]);
+            setUnlocked(u=>[...new Set([...u, analysisId])]);
           } else {
             setCredits(c=>Math.max(c, v.credits||0));
             setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
@@ -341,9 +362,8 @@ function App() {
     if(restoring)return;
     setRestoring(true);setError('');
     try {
-      const response=await fetch(API+'/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reference:restoreRef.trim(),email:payEmail.trim()})});
-      const v=await response.json();
-      if(!response.ok||!v.ok)throw new Error(v.error||'Could not verify receipt');
+      const v=await fetchJSON(API+'/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reference:restoreRef.trim(),email:payEmail.trim()})});
+      if(!v.ok)throw new Error(v.error||'Could not verify receipt');
       setPaymentRef(v.grantId);setCredits(v.credits);setPayEmail(v.email);
       setRecoveredReports({reports:Array.isArray(v.reports)?v.reports:[],reference:v.grantId,email:v.email});
       setNotice('Receipt restored: '+v.credits+' report credits remaining. '+(v.reports?.length?'Reopen a retained report below without using another credit.':'No retained reports are available for this receipt. You can use remaining credits for a new scan.'));
@@ -353,22 +373,24 @@ function App() {
 
   const unlock = async ()=>{
     if(!result || unlocking) return;
-    setUnlocking(true);
+    const current=beginReportRequest();
+    setUnlocking(true);setError('');
     try {
     if(payEmail && paymentRef){
-      const full = await fetch(API+'/api/unlock-analysis',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+      const full = await fetchJSON(API+'/api/unlock-analysis',{
+        method:'POST',headers:{'Content-Type':'application/json'},signal:current.controller.signal,
         body: JSON.stringify({analysisId: result._id, reference:paymentRef, email: payEmail})
-      }).then(r=>r.json());
-      if(full.error){ if(full.error==='No report credits remaining'){setCredits(0);setPaymentRef('');} setError(full.error);window.scrollTo({top:0});return; }
+      });
+      if(reportRequest.current!==current||current.controller.signal.aborted)return;
+      if(!full.isPaid){ if(full.error==='No report credits remaining'){setCredits(0);setPaymentRef('');} setError(full.error);window.scrollTo({top:0});return; }
       rememberPaidReport(full,paymentRef,payEmail);
       setResult(full);
       setCredits(full.credits||0);
       setUnlocked(u=>[...new Set([...u, result._id])]);
       return;
     }
-    beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single'});
-    } catch(e){setError('Unable to unlock this report. Please check your connection and try again.');window.scrollTo({top:0});} finally {setUnlocking(false);}
+    beginCheckout({amount: config.prices.single, label:'Full Report R19', product:'single',analysisId:result._id});
+    } catch(e){if(reportRequest.current===current){if(e.message==='No report credits remaining'){setCredits(0);setPaymentRef('');}setError(e.message||'Unable to unlock this report. Please check your connection and try again.');window.scrollTo({top:0});}} finally {setUnlocking(false);finishReportRequest(current);}
   };
 
   function exportPdf() {
@@ -441,6 +463,7 @@ function App() {
     y += 2;
     (result.issues || []).forEach(function(iss, i) {
       line((i + 1) + '. [' + (iss.severity || '') + '] ' + (iss.law || ''), 11);
+      if(['groq','openrouter'].includes(iss.source))line('AI-suggested finding — verify against the original contract and qualified advice.',8);
       if (iss.excerpt) line('Excerpt: ' + iss.excerpt, 9);
       if (iss.analysis) line(iss.analysis, 9);
       if (iss.recommendation) line('Recommended action: ' + iss.recommendation, 9);
@@ -519,7 +542,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       h('div',{className:'findings-heading',id:'report-findings',tabIndex:-1},h('h2',null,'Risks, missing protections & negotiation points'),h('span',null,issues.length+' '+(issues.length===1?'finding':'findings'))),
       h('div',{className:'findings-list'},issues.map((m,idx)=>h('article',{key:m.id||idx,className:'finding-card'+(String(m.severity||'').includes('HIGH')?' high-risk':' medium-risk')},
         h('div',{className:'finding-header'},h('span',{className:'finding-number'},String(idx+1).padStart(2,'0')),h('div',{className:'finding-title'},h('span',{className:'severity-label'},m.severity||'Flag'),h('h3',null,m.law||'Potential contract issue')),h('span',{className:'finding-risk'},m.riskScore||'Flagged')),
-        h('div',{className:'finding-body'},m.source==='groq'&&h('span',{className:'ai-tag'},'AI-suggested'),m.excerpt&&h('blockquote',null,h('span',{className:'content-label'},'From your contract'),h('p',null,m.excerpt)),
+        h('div',{className:'finding-body'},['groq','openrouter'].includes(m.source)&&h('span',{className:'ai-tag'},'AI-suggested'),m.excerpt&&h('blockquote',null,h('span',{className:'content-label'},'From your contract'),h('p',null,m.excerpt)),
           m.locked?h('p',{className:'locked-copy'},h(Icon,{name:'lock',size:17}),'Unlock this report to read the analysis and recommendations.'):h(React.Fragment,null,
             h('div',{className:'analysis-copy'},h('h4',null,'Why it matters'),h('p',null,m.analysis)),
             isUnlocked&&m.recommendation&&h('div',{className:'recommendation'},h('h4',null,'Recommended action'),h('p',null,m.recommendation)),

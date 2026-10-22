@@ -76,3 +76,45 @@ test('payment journey requires server approval and recovers a lost response with
   const grant=await store.getGrant(reference);assert.equal(grant.remaining,0);assert.deepEqual(grant.unlocked,[analysisId]);assert.ok(ui.button('Export PDF'));
  }finally{global.fetch=realFetch;store.durable=wasDurable;server.close();fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}
 });
+
+
+test('a late credit unlock cannot replace the report after navigation',async()=>{
+ const network=deferredFetch();
+ const report={...analyseContract('EMPLOYMENT AGREEMENT. Employee works 55 hours per week.','old.txt'),_id:'old',isPaid:false};
+ const ui=browserJourney(network.fetch,{1:'result',3:'online',15:report,17:1,18:'CC-existing-receipt',19:'buyer@example.test'});
+ const pending=ui.button('Use a credit').props.onClick();assert.equal(network.requests.length,1);
+ ui.button('Pricing').props.onClick();assert.equal(network.requests[0].options.signal.aborted,true);
+ network.requests[0].resolve({ok:true,json:async()=>({...report,isPaid:true,credits:0})});await pending;
+ assert.equal(ui.state[1],'pricing');assert.equal(ui.state[15].isPaid,false);assert.equal(ui.state[13],false);
+});
+
+test('payment confirmation retains recovery without replacing a later screen',async()=>{
+ const network=deferredFetch();const report={...analyseContract('EMPLOYMENT AGREEMENT. Employee works 55 hours per week.','old.txt'),_id:'old',isPaid:false};
+ const ui=browserJourney(network.fetch,{1:'result',2:{paystackPublicKey:'test-only',prices:{single:1900}},3:'online',15:report});
+ let checkout;ui.context.PaystackPop=ui.context.window.PaystackPop={setup(options){checkout=options;return{openIframe(){}};}};
+ await ui.button('Full report').props.onClick();ui.find(n=>n.type==='input'&&n.props.id==='receipt-email').props.onChange({target:{value:'buyer@example.test'}});
+ ui.find(n=>n.type==='form').props.onSubmit({preventDefault(){}});checkout.callback({reference:'CC-navigation-receipt'});
+ ui.button('Pricing').props.onClick();network.requests[0].resolve({ok:true,json:async()=>({ok:true,grantId:'CC-navigation-receipt',credits:1})});await settle();
+ assert.equal(network.requests.length,2);network.requests[1].resolve({ok:true,json:async()=>({...report,isPaid:true,credits:0})});await settle();
+ assert.equal(ui.state[1],'pricing');assert.equal(ui.state[15].isPaid,false);assert.match(ui.state[9],/Your report was unlocked/);
+ const saved=vm.runInContext('loadLS()',ui.context);assert.equal(saved.lastPaidReport.analysisId,'old');
+});
+
+test('stalled receipt requests abort and preserve an actionable no-repurchase message',async()=>{
+ let expire,aborted=false;
+ const ui=browserJourney((_url,options)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>{aborted=true;reject(new Error('aborted'));})));
+ ui.context.setTimeout=(fn,ms)=>{assert.equal(ms,25000);expire=fn;return 1;};ui.context.clearTimeout=()=>{};
+ const pending=vm.runInContext("fetchJSON('/api/verify-payment',{method:'POST'})",ui.context);
+ expire();await assert.rejects(pending,/restore your existing receipt; do not pay again/);assert.equal(aborted,true);
+});
+
+
+test('buying a single credit on Pricing never attempts to unlock a lingering example report',async()=>{
+ const network=deferredFetch();const example={...analyseContract('RESIDENTIAL LEASE. Deposit is non-refundable.','example.txt'),_id:'demo-lease',isPaid:true,isDemo:true};
+ const ui=browserJourney(network.fetch,{1:'pricing',2:{paystackPublicKey:'test-only',prices:{single:1900,pack3:3900,pack10:9900}},3:'online',15:example});
+ let checkout;ui.context.PaystackPop=ui.context.window.PaystackPop={setup(options){checkout=options;return{openIframe(){}};}};
+ ui.button('Buy R19').props.onClick();ui.find(n=>n.type==='input'&&n.props.id==='receipt-email').props.onChange({target:{value:'buyer@example.test'}});
+ ui.find(n=>n.type==='form'&&JSON.stringify(n.props.children).includes('receipt-email')).props.onSubmit({preventDefault(){}});assert.equal(checkout.metadata.analysisId,'');checkout.callback({reference:'CC-pricing-example-receipt'});
+ network.requests[0].resolve({ok:true,json:async()=>({ok:true,grantId:'CC-pricing-example-receipt',credits:1})});await settle();
+ assert.equal(network.requests.length,1);assert.equal(ui.state[17],1);assert.match(ui.state[9],/1 report credits added/);assert.equal(ui.state[14],'');
+});

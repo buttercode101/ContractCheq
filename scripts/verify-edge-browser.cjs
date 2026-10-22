@@ -1,15 +1,15 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 
 // Separate fresh contexts exercise failure recovery without touching real receipts or storage.
-module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
+module.exports=async function verifyEdges({browser,base,out,outDir,matrix,bounded}){
  const backup=JSON.parse(fs.readFileSync(outDir+'/checklist-'+out.browser+'.json','utf8'));
  async function fresh(path='/'){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.setDefaultTimeout(20000);page.on('pageerror',e=>{out.errors.push(e.message);console.error('edge-page-error',JSON.stringify({url:page.url(),message:e.message,stack:e.stack}));});
   await page.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Checkout is not used in failure recovery. */'}));
-  // Wait for startup API bodies before intentionally reloading a test context.
-  const ready=Promise.all(['/api/config','/api/events'].map(route=>page.waitForResponse(r=>r.url()===base+route).then(r=>r.finished())));
-  await page.goto(base+path,{waitUntil:'domcontentloaded'});await ready;return page;
+  // Gate on the configuration used by the UI; background telemetry must not block user journeys.
+  const ready=page.waitForResponse(r=>r.url()===base+'/api/config').then(r=>r.json());
+  await page.goto(base+path,{waitUntil:'domcontentloaded'});await bounded(ready,'Fresh-context configuration '+path);return page;
  }
  const page=await fresh('/checklists');
  const poisoned={...backup,id:'untrusted-import',title:'Imported edge checklist',role:'__proto__',items:backup.items.map((i,n)=>n===0?{...i,quote:'<img src=x onerror="window.injectedBackup=true"> Client must pay after acceptance.'}:i)};
@@ -25,7 +25,7 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  await editor.getByRole('button',{name:'Save checklist changes',exact:true}).click();assert.match(await page.locator('.action-message').innerText(),/changes saved/);
  await page.reload({waitUntil:'domcontentloaded'});await page.locator('.saved-card').click();editor=page.getByRole('region',{name:'Saved checklist editor'});
  assert(await editor.locator('.action-item').first().getByRole('checkbox',{name:/Mark complete/}).isChecked());
- const download=page.waitForEvent('download');await editor.getByRole('button',{name:'Export confirmed dates',exact:true}).click();const file=outDir+'/edited-dates-'+out.browser+'.ics';await(await download).saveAs(file);assert.match(fs.readFileSync(file,'utf8'),/DTSTART;VALUE=DATE:20261202/);
+ const download=page.waitForEvent('download');await editor.getByRole('button',{name:'Export confirmed dates',exact:true}).click();const file=outDir+'/edited-dates-'+out.browser+'.ics';const editedDownload=await bounded(download,'Edited calendar download event');console.log('Edited calendar download started',editedDownload.suggestedFilename());try{await bounded(editedDownload.saveAs(file),'Edited calendar download completion');}catch(error){await editedDownload.cancel();throw error;}assert.match(fs.readFileSync(file,'utf8'),/DTSTART;VALUE=DATE:20261202/);
  await page.getByLabel('Restore checklist backup',{exact:true}).setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{"version":1}')});
  await page.getByRole('status').filter({hasText:'not a supported checklist'}).waitFor();assert.equal(await page.locator('.saved-card').count(),1);
  await page.evaluate(()=>{localStorage.setItem('cc_v3',JSON.stringify({email:'synthetic@example.test',credits:0,notes:{}}));localStorage.setItem('cc_checklists_v1','{');});
@@ -34,7 +34,7 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  await page.getByText('Replace unreadable checklist storage',{exact:true}).click();await page.getByRole('button',{name:'Clear unreadable checklist data',exact:true}).click();
  assert.equal(await page.evaluate(()=>localStorage.getItem('cc_v3')),receiptStorage);
  await page.getByLabel('Restore checklist backup',{exact:true}).setInputFiles({name:'recovered.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});await page.locator('.saved-card').waitFor();
- out.checks.push('Untrusted backup roles and HTML remain safe; edited dates require reconfirmation, saved changes survive reload, invalid imports preserve existing data, corrupt storage recovery preserves receipt settings');
+ out.checks.push('Untrusted backup roles and HTML remain safe; edited dates require reconfirmation, saved changes survive reload, invalid imports preserve existing data, corrupt storage recovery preserves receipt settings');await page.context().close();
 
  const quota=await fresh();
  await quota.evaluate(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='cc_checklists_v1')throw new DOMException('Quota full','QuotaExceededError');return original.call(this,key,value);};});
@@ -45,19 +45,19 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  await quota.getByLabel('Questions to send back',{exact:true}).fill('Please confirm the payment trigger.');await quota.getByRole('button',{name:'Copy questions',exact:true}).click();
  await quota.locator('.action-message').filter({hasText:/Questions copied|Select and copy/}).waitFor();
  await matrix(quota,'storage-failure');
- out.checks.push('A full browser store reports save failure while report, backup download and copy-or-manual-copy questions remain usable');
+ out.checks.push('A full browser store reports save failure while report, backup download and copy-or-manual-copy questions remain usable');await quota.context().close();
 
  const asset=await fresh();await asset.route('**/checklist-tools.js',r=>r.abort());await asset.reload({waitUntil:'domcontentloaded'});
  await asset.getByRole('button',{name:'Explore Residential lease example report',exact:true}).click();await asset.getByRole('alert').filter({hasText:'Checklist tools could not load'}).waitFor();
  assert(await asset.getByRole('heading',{name:'Your contract, in everyday language',exact:true}).isVisible());
  await asset.unroute('**/checklist-tools.js');await asset.goto(base,{waitUntil:'domcontentloaded'});await asset.getByRole('button',{name:'Explore Residential lease example report',exact:true}).click();await asset.locator('#report-actions').waitFor();
- out.checks.push('Missing checklist asset preserves the full report and recovers on reload');
+ out.checks.push('Missing checklist asset preserves the full report and recovers on reload');await asset.context().close();
 
  const retry=await fresh();await retry.route('**/api/analyze',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic analysis outage. Please retry.'})}));
  const input={name:'retry-contract.txt',mimeType:'text/plain',buffer:Buffer.from('RESIDENTIAL LEASE. The landlord may enter the dwelling without notice. The tenant shall pay R8000 monthly.')};
  await retry.getByLabel('Choose a contract document').setInputFiles(input);await retry.getByRole('alert').filter({hasText:'Synthetic analysis outage'}).waitFor();await retry.getByLabel('Choose a contract document').waitFor();
  await retry.unroute('**/api/analyze');await retry.getByLabel('Choose a contract document').setInputFiles(input);await retry.locator('.risk-gauge').waitFor();assert.equal(await retry.getByRole('alert').count(),0);
- out.checks.push('A failed upload surfaces its error and the same file succeeds after retry');
+ out.checks.push('A failed upload surfaces its error and the same file succeeds after retry');await retry.context().close();
 
  const landscape=await fresh();await landscape.setViewportSize({width:844,height:390});
  await landscape.getByRole('button',{name:'Open navigation menu',exact:true}).click();
@@ -70,6 +70,33 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  const box=await modal.boundingBox();assert(box.height<=390,'Landscape checkout must fit the viewport');
  await landscape.keyboard.press('Escape');assert.equal(await landscape.getByRole('dialog').count(),0);assert.equal(await landscape.getByRole('button',{name:'Buy R19',exact:true}).evaluate(el=>el===document.activeElement),true);
  assert(await landscape.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- out.checks.push('844x390 landscape: mobile navigation, history back, checkout scrolling, invalid email and Escape focus restoration pass');
+ out.checks.push('844x390 landscape: mobile navigation, history back, checkout scrolling, invalid email and Escape focus restoration pass');await landscape.context().close();
+
+ // A delayed payment completion must retain the receipt without replacing a later page/report.
+ const payRace=await fresh();
+ await payRace.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:"window.PaystackPop={setup:function(o){return{openIframe:function(){o.callback({reference:'CC-navigation-browser-receipt'})}}}}"}));
+ await payRace.reload({waitUntil:'domcontentloaded'});
+ await payRace.getByLabel('Choose a contract document').setInputFiles(input);await payRace.locator('.risk-gauge').waitFor();
+ let releaseUnlock,unlockStarted;const unlockGate=new Promise(r=>releaseUnlock=r),unlockReady=new Promise(r=>unlockStarted=r);
+ await payRace.route('**/api/unlock-analysis',async route=>{const response=await route.fetch();unlockStarted();await unlockGate;await route.fulfill({response});});
+ await payRace.getByRole('button',{name:/Full report/}).click();await payRace.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await payRace.getByRole('button',{name:'Continue to Paystack'}).click();await unlockReady;
+ await payRace.getByRole('button',{name:'Open navigation menu',exact:true}).click();await payRace.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Pricing',exact:true}).click();releaseUnlock();await payRace.getByRole('status').filter({hasText:'Your report was unlocked'}).waitFor();
+ await payRace.getByRole('button',{name:'Return to current report',exact:true}).click();assert.equal(await payRace.getByRole('button',{name:'Export PDF',exact:true}).count(),0);await payRace.context().close();
+
+ const pricingBuy=await fresh();let incidentalUnlocks=0;
+ await pricingBuy.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:"window.PaystackPop={setup:function(o){if(o.metadata.analysisId)throw Error('Pricing must not attach an incidental report');return{openIframe:function(){o.callback({reference:'CC-pricing-browser-receipt'})}}}}"}));
+ await pricingBuy.reload({waitUntil:'domcontentloaded'});await pricingBuy.getByRole('button',{name:'Explore Residential lease example report',exact:true}).click();await pricingBuy.locator('.risk-gauge').waitFor();
+ await pricingBuy.route('**/api/unlock-analysis',route=>{incidentalUnlocks++;return route.abort();});
+ await pricingBuy.getByRole('button',{name:'Open navigation menu',exact:true}).click();await pricingBuy.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Pricing',exact:true}).click();await pricingBuy.getByRole('button',{name:'Buy R19',exact:true}).click();await pricingBuy.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await pricingBuy.getByRole('button',{name:'Continue to Paystack'}).click();
+ await pricingBuy.getByRole('status').filter({hasText:'1 report credits added'}).waitFor();assert.equal(incidentalUnlocks,0);
+ out.checks.push('Pricing purchases after exploring an example add a reusable credit without attaching or unlocking the example');await pricingBuy.context().close();
+ // Receipt restoration has a finite deadline and becomes retryable without another checkout.
+ const stalled=await fresh('/pricing');
+ await stalled.evaluate(()=>{const original=window.setTimeout;window.setTimeout=(fn,ms,...args)=>original(fn,ms===25000?100:ms,...args);});
+ let releaseReceipt;const receiptGate=new Promise(r=>releaseReceipt=r);
+ await stalled.route('**/api/verify-payment',async route=>{await receiptGate;await route.abort().catch(()=>{});});
+ await stalled.getByLabel('Payment reference').fill('CC-stalled-browser-receipt');await stalled.getByLabel('Receipt email').fill('synthetic@example.test');await stalled.getByRole('button',{name:'Restore existing payment'}).click();
+ await stalled.getByRole('alert').filter({hasText:'do not pay again'}).waitFor();assert(await stalled.getByRole('button',{name:'Restore existing payment'}).isEnabled());releaseReceipt();
+ out.checks.push('Delayed payment completion retains recovery without overwriting later navigation; stalled receipt requests time out, preserve the reference and allow retry without paying again');await stalled.context().close();
 
 };
