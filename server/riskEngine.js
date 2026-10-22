@@ -422,9 +422,12 @@ function analyseContract(text, fileName = '', jurisdiction = 'ZA', perspective =
       for (const candidate of matches) {
         const before = text.slice(Math.max(0, candidate.index - 110), candidate.index);
         // A prohibition applies to its own clause, not a later independent obligation.
-        const boundary = /[.!?;\n]|\b(?:and|but|however|whereas|yet)\b/i;
-        const prefix = before.split(boundary).pop();
-        const clause = (prefix + candidate[0] + text.slice(candidate.index + candidate[0].length, candidate.index + candidate[0].length + 65)).split(boundary)[0];
+        const boundary = /[.!?;\n]|\b(?:and|but|however|whereas|yet)\b(?=\s+(?:(?:the|a|an)\s+)?(?:landlord|tenant|deposit|employee|employer|client|supplier|contractor|consultant|freelancer|consumer|customer|party|parties|you|we|they|it)\b)/i;
+        const context = before + candidate[0] + text.slice(candidate.index + candidate[0].length, candidate.index + candidate[0].length + 65);
+        const previous = [...context.matchAll(new RegExp(boundary.source, 'gi'))].filter(b => b.index < before.length).at(-1);
+        const clauseStart = previous ? previous.index + previous[0].length : 0;
+        const prefix = context.slice(clauseStart, before.length);
+        const clause = context.slice(clauseStart).split(boundary)[0];
         const protectedPrefix = /\b(nothing|never|not|must not|may not|shall not|does not|do not|cannot|can not|no provision)\b/i.test(prefix);
         const prohibited = /\b(prohibited|forbidden|not permitted|never be sold|will not be sold)\b/i.test(clause);
         const protectedDeposit = rule.id === 'rha-dep' && /\bdeposit\b[^.!?;\n]{0,30}\b(?:may not|must not|shall not|cannot|can not)\b[^.!?;\n]{0,40}\b(?:without\s+interest|non[- ]?refundable|forfeited|not\s+refundable)\b/i.test(candidate[0]);

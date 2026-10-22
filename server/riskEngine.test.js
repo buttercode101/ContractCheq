@@ -70,3 +70,11 @@ test('a separate negative obligation cannot suppress a later unsafe clause in th
  for(const text of ['Landlord may not enter the dwelling without notice.','It is prohibited to enter the dwelling without notice.'])
   assert.ok(!analyseContract('RESIDENTIAL LEASE. '+text,'lease.txt').issues.some(i=>i.id.startsWith('rha-entry-')),text);
 });
+
+
+test('coordinated protected actions and objects keep their shared prohibition',()=>{
+ const lease=analyseContract('RESIDENTIAL LEASE. Landlord must not inspect the dwelling at any time and enter the dwelling without notice.','lease.txt');
+ assert.ok(!lease.issues.some(i=>i.id.startsWith('rha-entry-')));
+ const service=analyseContract('SERVICES AGREEMENT. Any attempt to exclude liability for death and personal injury is prohibited.','service.txt','UK');
+ assert.ok(!service.issues.some(i=>i.id.startsWith('uk-unfair-')));
+});

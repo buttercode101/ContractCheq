@@ -8,7 +8,8 @@ permissions:
   contents: read
 jobs:
   browsers:
-    runs-on: ubuntu-latest
+    # Chromium keeps its sandbox enabled; Ubuntu 24's AppArmor blocks the bundled binary.
+    runs-on: ${{ matrix.browser == 'chromium' && 'ubuntu-22.04' || 'ubuntu-latest' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
