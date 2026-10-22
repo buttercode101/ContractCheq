@@ -16,7 +16,7 @@ function canonicalHost(req, res, next) {
 // the edge. The cleanup endpoint still passes through the server guard above.
 const hostRoutes = [
   {src:'/api/cleanup', dest:'/api/index'},
-  {src:'/.*', missing:[{type:'host',value:'^'+SITE_HOST.replace(/\./g,'\\.')+'$'}], status:404,
+  {src:'/.*', missing:[{type:'host',value:'^'+SITE_HOST.replace(/\./g,'\\.')+'$'}], mitigate:{action:'deny'},
     headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}}
 ];
 
