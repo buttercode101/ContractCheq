@@ -243,3 +243,11 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 .service-status p{font-size:14px;line-height:1.6;margin-top:4px;color:var(--muted)}
 .service-status button{min-height:44px;max-width:100%;white-space:normal}
 .error-banner button,.notice-banner button{width:44px;height:44px;min-width:44px;min-height:44px}
+.full-report-features{margin-top:24px;padding-top:12px;border-top:1px solid var(--line)}
+.full-report-features summary{min-height:48px;align-content:center;cursor:pointer;color:var(--accent);font-size:16px;font-weight:600;line-height:1.6}
+.full-report-features ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;padding-left:20px;margin:16px 0}
+.full-report-features li{font-size:15px;line-height:1.6;padding-left:4px}
+@media(max-width:640px){.full-report-features ul{grid-template-columns:1fr}}
+.document-page h2{font-size:19px;line-height:1.4;margin-top:28px;letter-spacing:-.2px}
+.document-page h2+p{margin-top:10px}
+.document-page a{overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
