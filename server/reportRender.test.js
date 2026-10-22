@@ -26,11 +26,12 @@ function reportTree(result, windowExtras = {}, savedState = {}) {
     ReactDOM: { createRoot: () => ({ render: element => { root = element; } }) },
     document: { getElementById: () => ({}) },
     window: { location: { pathname: '/' }, ...windowExtras },
-    localStorage: { getItem: () => null },
+    localStorage: { getItem: () => {if(windowExtras.blockStorage)throw Error('Browser storage blocked');return null;} },
     fetch: () => Promise.resolve({ json: async () => ({}) }),
     console,
   };
   vm.createContext(context);
+  for(const asset of ['checklist-tools.js','contract-actions.js']) vm.runInContext(fs.readFileSync(path.join(__dirname,'../public',asset),'utf8'),context);
   vm.runInContext(script, context);
   return root.type();
 }
@@ -48,6 +49,7 @@ test('free report renders findings, notes, details and unlock controls', () => {
     assert.ok(html.includes(required), `missing free report content: ${required}`);
   assert.ok(!html.includes('Recommended action'));
   assert.ok(!html.includes('Export PDF'));
+  assert.ok(!html.includes('Your obligations checklist'));
   assert.ok(!html.includes('Find wording in your contract'));
 });
 
@@ -60,7 +62,9 @@ test('paid report renders every finding, recommendation, impact and PDF action',
     assert.ok(html.includes(required), `missing paid report content: ${required}`);
   assert.ok(!html.includes('Unlock report'));
   assert.ok(html.includes('Your contract, in everyday language'));
+  for(const text of ['Payments &amp; actions','Payment summary','Your obligations checklist','Questions to send back'])assert.ok(html.includes(text));
   for(const text of ['Checklist &amp; dates','tenant review','Confirm deposit records','30 days','Text section 1','before termination']) assert.ok(html.includes(text));
+  for(const text of ['Payments &amp; actions','Payment summary','Your obligations checklist','Questions to send back'])assert.ok(html.includes(text));
   assert.ok(html.includes('Original wording'));
   assert.ok(html.includes('Find wording in your contract'));
 });
@@ -117,4 +121,9 @@ test('direct FAQ links resolve to populated pricing content and navigation updat
  vm.createContext(context);vm.runInContext(script,context);
  assert.equal(vm.runInContext("viewForPath('/faq')",context),'pricing');assert.equal(vm.runInContext("viewForPath('/privacy/')",context),'privacy');
  assert.ok(script.includes("window.history.pushState({},'',pathname)"));assert.ok(script.includes("addEventListener('popstate',onBack)"));
+});
+
+test('blocked browser storage keeps the paid report and checklist readable',()=>{
+ const result={...specimen(),isPaid:true};
+ const html=renderToStaticMarkup(reportTree(result,{blockStorage:true}));assert.ok(html.includes('Your obligations checklist'));assert.ok(html.includes('Export PDF'));
 });

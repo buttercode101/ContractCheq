@@ -1,20 +1,23 @@
 // Role prompts are review questions, never evidence that a protection is missing.
-const ROLES = ['neutral', 'tenant', 'landlord', 'employee', 'employer'];
+const ROLES = ['neutral', 'tenant', 'landlord', 'employee', 'employer', 'freelancer', 'client'];
 function validatePerspective(value = 'neutral') {
   if (typeof value !== 'string' || !ROLES.includes(value.toLowerCase())) {
-    throw Object.assign(new Error('Choose neutral, tenant, landlord, employee or employer.'), { status: 400 });
+    throw Object.assign(new Error('Choose neutral, tenant, landlord, employee, employer, freelancer or client.'), { status: 400 });
   }
   return value.toLowerCase();
 }
 function reportContext(guide, docType, perspective = 'neutral') {
   const role = validatePerspective(perspective);
   const lease = /lease|tenancy/i.test(docType), employment = /employment/i.test(docType);
-  const compatible = role === 'neutral' || (lease && ['tenant','landlord'].includes(role)) || (employment && ['employee','employer'].includes(role));
+  const services = /services|consultancy|consulting|statement of work/i.test(docType);
+  const compatible = role === 'neutral' || (lease && ['tenant','landlord'].includes(role)) || (employment && ['employee','employer'].includes(role)) || (services && ['freelancer','client'].includes(role));
   const questions = compatible ? ({
     tenant: ['What must you pay, when can the rent change, and how is the deposit returned?', 'What notice applies to entry, repairs and ending the tenancy?'],
     landlord: ['Which payments and property-care duties can you enforce under the agreement?', 'What notice, deposit records and repair obligations must you meet?'],
     employee: ['What pay, working hours, overtime and leave arrangements apply to you?', 'What notice, deductions and restrictions apply when the job ends?'],
     employer: ['What pay, hours, leave and record-keeping commitments are you making?', 'What process and notice should you check before changing or ending employment?'],
+    freelancer: ['What deliverables and revision rounds are included, and how is additional work approved?', 'When are deposits, milestones and final payments due, and when do ownership rights transfer?'],
+    client: ['What must the provider deliver, and what approval or feedback must you provide?', 'What payments, revision limits, cancellation terms and usage rights are agreed?'],
     neutral: []
   })[role] : [];
   const dates = [];
