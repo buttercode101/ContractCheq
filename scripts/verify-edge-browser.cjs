@@ -72,4 +72,23 @@ module.exports=async function verifyEdges({browser,base,out,outDir,matrix}){
  assert(await landscape.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  out.checks.push('844x390 landscape: mobile navigation, history back, checkout scrolling, invalid email and Escape focus restoration pass');
 
+ // A delayed payment completion must retain the receipt without replacing a later page/report.
+ const payRace=await fresh();
+ await payRace.route('https://js.paystack.co/v1/inline.js',r=>r.fulfill({contentType:'text/javascript',body:"window.PaystackPop={setup:function(o){return{openIframe:function(){o.callback({reference:'CC-navigation-browser-receipt'})}}}}"}));
+ await payRace.reload({waitUntil:'domcontentloaded'});
+ await payRace.getByLabel('Choose a contract document').setInputFiles(input);await payRace.locator('.risk-gauge').waitFor();
+ let releaseUnlock,unlockStarted;const unlockGate=new Promise(r=>releaseUnlock=r),unlockReady=new Promise(r=>unlockStarted=r);
+ await payRace.route('**/api/unlock-analysis',async route=>{const response=await route.fetch();unlockStarted();await unlockGate;await route.fulfill({response});});
+ await payRace.getByRole('button',{name:/Full report/}).click();await payRace.getByLabel('Email address',{exact:true}).fill('synthetic@example.test');await payRace.getByRole('button',{name:'Continue to Paystack'}).click();await unlockReady;
+ await payRace.getByRole('button',{name:'Pricing',exact:true}).click();releaseUnlock();await payRace.getByRole('status').filter({hasText:'Your report was unlocked'}).waitFor();
+ await payRace.getByRole('button',{name:'Return to current report',exact:true}).click();assert.equal(await payRace.getByRole('button',{name:'Export PDF',exact:true}).count(),0);
+ // Receipt restoration has a finite deadline and becomes retryable without another checkout.
+ const stalled=await fresh('/pricing');
+ await stalled.evaluate(()=>{const original=window.setTimeout;window.setTimeout=(fn,ms,...args)=>original(fn,ms===25000?100:ms,...args);});
+ let releaseReceipt;const receiptGate=new Promise(r=>releaseReceipt=r);
+ await stalled.route('**/api/verify-payment',async route=>{await receiptGate;await route.abort().catch(()=>{});});
+ await stalled.getByLabel('Payment reference').fill('CC-stalled-browser-receipt');await stalled.getByLabel('Receipt email').fill('synthetic@example.test');await stalled.getByRole('button',{name:'Restore existing payment'}).click();
+ await stalled.getByRole('alert').filter({hasText:'do not pay again'}).waitFor();assert(await stalled.getByRole('button',{name:'Restore existing payment'}).isEnabled());releaseReceipt();
+ out.checks.push('Delayed payment completion retains recovery without overwriting later navigation; stalled receipt requests time out, preserve the reference and allow retry without paying again');
+
 };

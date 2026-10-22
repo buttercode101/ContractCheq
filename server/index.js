@@ -333,7 +333,7 @@ function freeViewOf(analysis) {
   return {
     ...pick(analysis, ['_id','score','level','issuesCount','confidence','criticalCount','docTitle','docType','coverageWarning','rulesVersion','jurisdiction','extraction','llmEnriched','aiStatus']),
     issues: analysis.issues.slice(0, 3).map(issue => pick(issue, ['id','severity','law','lawRef','riskScore','excerpt','analysis','tags','rawScore','source'])),
-    issuesLocked: analysis.issues.slice(3).map(i => ({id:i.id,severity:i.severity,law:i.law,riskScore:i.riskScore,locked:true})),
+    issuesLocked: analysis.issues.slice(3).map(i => ({id:i.id,severity:i.severity,law:i.law,riskScore:i.riskScore,source:i.source,locked:true})),
     issuesPreview: analysis.issues.map(i => ({id:i.id,severity:i.severity,law:i.law,riskScore:i.riskScore})),
     freePreview: true,
     isPaid: false,

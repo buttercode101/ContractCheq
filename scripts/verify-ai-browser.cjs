@@ -11,6 +11,7 @@ module.exports=async function verifyAI({browser,base,out,outDir,matrix,aiCalls,s
  const fixture={name:'ai-consent.txt',mimeType:'text/plain',buffer:Buffer.from('RESIDENTIAL LEASE. The tenant shall pay R8000 each month. The landlord may enter the dwelling without notice.')};
  await page.getByLabel('Choose a contract document').setInputFiles(fixture);await page.locator('.risk-gauge').waitFor();await page.locator('.enrichment-label').waitFor();assert.equal(aiCalls.length,1);
  assert(await page.getByText('Optional AI insights included. AI findings are marked below.',{exact:true}).isVisible());assert.equal(await page.locator('#report-actions').count(),0);
+ assert.equal(await page.locator('.ai-tag').count(),1,'OpenRouter findings must be individually labelled, including locked findings');
  await matrix(page,'ai-completed');
  await page.getByRole('button',{name:'New scan',exact:true}).click();setAIMode('unavailable');
  await page.getByLabel('Choose a contract document').setInputFiles(fixture);await page.locator('.risk-gauge').waitFor();
