@@ -127,3 +127,8 @@ test('blocked browser storage keeps the paid report and checklist readable',()=>
  const result={...specimen(),isPaid:true};
  const html=renderToStaticMarkup(reportTree(result,{blockStorage:true}));assert.ok(html.includes('Your obligations checklist'));assert.ok(html.includes('Export PDF'));
 });
+
+test('failed optional AI is visible while the rules report remains readable',()=>{
+ const result={...specimen(),isPaid:false,llmEnriched:false,aiStatus:'unavailable'};
+ const html=renderToStaticMarkup(reportTree(result));assert.ok(html.includes('AI insights could not be added. Your rules-based report is ready.'));assert.ok(html.includes('findings-list'));assert.ok(!html.includes('Optional AI insights included.'));
+});

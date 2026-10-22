@@ -7,7 +7,7 @@
     "start": "node server/index.js",
     "dev": "node server/index.js",
     "test:smoke": "node server/smoke.js",
-    "test": "node --test server/*.test.js"
+    "test": "node --require ./scripts/test-env.cjs --test server/*.test.js"
   },
   "engines": {
     "node": "24.x"

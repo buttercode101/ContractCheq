@@ -8,6 +8,8 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-ai-'));
 process.env.AI_ENRICHMENT_ENABLED = 'true';
 process.env.OPENROUTER_API_KEY = 'test-only';
 process.env.TINYFISH_API_KEY = 'test-only';
+process.env.AI_RESEARCH_ENABLED = 'true';
+process.env.GROQ_API_KEY = 'test-only';
 const app = require('./index');
 test('optional AI requires upload consent, uses bounded calls and labels grounded OpenRouter evidence', async () => {
  const realFetch = global.fetch, calls = [];
@@ -32,9 +34,10 @@ test('optional AI requires upload consent, uses bounded calls and labels grounde
   }
   await scan(false); assert.equal(calls.length, 0);
   const result = await scan(true);
-  assert.equal(result.llmEnriched, true);
+  assert.equal(result.llmEnriched, true);assert.equal(result.aiStatus,'completed');
   assert.equal(result.issues.filter(x => x.source === 'openrouter').length, 1);
   const completion = calls.find(x => x.url.includes('openrouter'));
+  const request=JSON.parse(completion.options.body);assert.equal(request.model,'deepseek/deepseek-v4-flash');assert.equal(request.provider.zdr,true);assert.equal(request.provider.data_collection,'deny');assert.equal(request.provider.sort,'price');assert.deepEqual(request.provider.max_price,{prompt:0.10,completion:0.30,request:0});assert.equal(request.max_tokens,1600);assert.equal(request.reasoning.enabled,false);
   for (const sensitive of ['buyer@example.test', '9001011234088', '0821234567']) assert(!completion.options.body.includes(sensitive));
   assert(!decodeURIComponent(calls.find(x => x.url.includes('tinyfish')).url).includes('R8000'));
   assert(!result.issues.some(x => x.excerpt.includes('invented clause')));
