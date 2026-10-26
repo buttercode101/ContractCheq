@@ -428,6 +428,13 @@ app.get('/api/config', async (_req, res) => {
 app.post('/api/events', eventLimiter, async (req,res,next) => { try { const { name, props } = req.body || {}; if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' }); await trackSafely(name.slice(0,64), typeof props === 'object' && props ? props : {}); res.json({ ok: true }); } catch (e) { next(e); } });
 
 app.get('/api/metrics', (_req,res)=>res.status(403).json({error:'Private endpoint'}));
+app.get('/api/admin/storage-inventory', diagnosticLimiter, async (req,res,next) => {
+  const token = process.env.CONTRACTCHECK_STORAGE_TOKEN || '';
+  const supplied = String(req.headers.authorization || '').replace(/^Bearer /, '');
+  const crypto = require('node:crypto');
+  if (!/^[a-f0-9]{64}$/.test(token) || supplied.length !== token.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(token))) return res.status(403).json({ error: 'Private endpoint' });
+  try { res.json({ ok: true, counts: await store.legacyInventory() }); } catch(e) { next(e); }
+});
 app.get('/api/credits', async (req,res,next)=> { try { const ref = String(req.headers['x-payment-reference']||''); if(!ref) return res.status(401).json({error:'Payment receipt required'}); const grant = await store.getGrant(ref); if(!grant) return res.status(404).json({error:'Receipt not found'}); res.json({credits:grant.remaining}); } catch (e) { next(e); } });
 
 app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {

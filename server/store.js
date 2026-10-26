@@ -200,4 +200,25 @@ async function probeStorage() {
   }
 }
 
-module.exports = { ensure, saveAnalysis, getAnalysis, saveGrant, getGrant, useCredit, track, metrics, durable, probeStorage, cleanupExpired };
+async function legacyInventory() {
+  const counts = { grants: 0, activeAnalyses: 0, expiredAnalyses: 0, other: 0, unreadable: 0 };
+  let cursor;
+  do {
+    const batch = await list({ prefix: 'contractcheck/', cursor, limit: 1000 });
+    for (const b of batch.blobs) {
+      const grant = /^contractcheck\/grants\/[a-f0-9]{64}\.json$/.test(b.pathname);
+      const analysis = /^contractcheck\/analyses\/[a-f0-9]{64}\.json$/.test(b.pathname);
+      if (grant) counts.grants++;
+      else if (analysis && new Date(b.uploadedAt).getTime() >= Date.now() - 48 * 3600000) counts.activeAnalyses++;
+      else if (analysis) counts.expiredAnalyses++;
+      else counts.other++;
+      if (grant || (analysis && new Date(b.uploadedAt).getTime() >= Date.now() - 48 * 3600000)) {
+        try { const r = await get(b.pathname, { access: 'private', useCache: false }); if (!r) counts.unreadable++; }
+        catch { counts.unreadable++; }
+      }
+    }
+    cursor = batch.hasMore ? batch.cursor : undefined;
+  } while (cursor);
+  return counts;
+}
+module.exports = { legacyInventory, ensure, saveAnalysis, getAnalysis, saveGrant, getGrant, useCredit, track, metrics, durable, probeStorage, cleanupExpired };
