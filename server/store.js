@@ -143,7 +143,8 @@ async function track(name, props = {}) {
 
   const event = { name: eventNames.includes(name) ? name : 'other', props: safe, at: Date.now() };
   console.info('[telemetry]', JSON.stringify(event));
-  await writeObject(key('events', crypto.randomUUID()), event, null, true);
+  // Keep production telemetry in platform logs, preserving Blob operations for reports and credits.
+  if (!durable() && !process.env.VERCEL) await writeObject(key('events', crypto.randomUUID()), event, null, true);
 }
 
 async function metrics() {

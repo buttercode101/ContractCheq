@@ -492,6 +492,7 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
 
     res.json(freeViewOf(analysis));
   } catch (err) {
+    if (storageUnavailable(err, res)) return;
     const status = Number(err?.status) || 500;
     if (status >= 500) console.error('analyze', err);
     res.status(status).json({ error: status >= 500 ? 'Analysis could not be saved. Please try again shortly.' : err.message });
@@ -547,7 +548,15 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('*', (req,res,next)=> { if (req.path.startsWith('/api')) return next(); res.sendFile(path.join(__dirname, '..', 'public', 'index.html')); });
 
+function storageUnavailable(err, res) {
+  if (!/BlobStoreSuspended|BlobServiceNotAvailable|BlobServiceUnavailable|Private storage is not connected/.test(String(err?.name) + ' ' + String(err?.message))) return false;
+  console.error('Private report storage unavailable:', err?.name || 'StorageError');
+  res.set('Retry-After', '300').status(503).json({ code: 'STORAGE_UNAVAILABLE', error: 'Private report storage is temporarily unavailable. Please try again later.' });
+  return true;
+}
+
 app.use((err, _req, res, _next) => {
+  if (storageUnavailable(err, res)) return;
   if (err instanceof multer.MulterError) return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `File too large (max ${MAX_FILE_MB}MB)` : err.message });
   const status = Number(err.status) || 500;
   // Parser errors carry submitted request bodies; client mistakes must not retain contract text in logs.
