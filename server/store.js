@@ -50,7 +50,11 @@ async function writeObject(name, value, etag, create = false) {
     }
   }
   // Fallback to local file system – same logic as the original non‑durable branch.
+  // Ensure a writable directory exists for the fallback when the Vercel environment
+  // has the blob feature enabled but the write failed.
+  if (!fs.existsSync(ROOT)) fs.mkdirSync(ROOT, { recursive: true });
   ensure();
+
   const p = path.join(ROOT, digest(name) + '.json');
   if (etag) {
     if (!fs.existsSync(p)) throw Object.assign(new Error('ETag mismatch'), { code: 'PRECONDITION_FAILED' });
