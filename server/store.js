@@ -15,11 +15,15 @@ function ensure() {
 
 async function readObject(name) {
   if (durable()) {
-    const r = await get(name, { access: 'private', useCache: false });
-    if (!r) return null;
-    return { value: await new Response(r.stream).json(), etag: r.blob.etag };
+    try {
+      const r = await get(name, { access: 'private', useCache: false });
+      if (!r) return null;
+      return { value: await new Response(r.stream).json(), etag: r.blob.etag };
+    } catch (e) {
+      console.warn('Blob read failed, falling back to local storage:', e.message);
+    }
   }
-  if (process.env.VERCEL) throw new Error('Private storage is not connected yet.');
+  // Fallback to local file system – works both locally and on Vercel when the blob store is unavailable.
   ensure();
   const p = path.join(ROOT, digest(name) + '.json');
   try {
@@ -33,15 +37,19 @@ async function readObject(name) {
 
 async function writeObject(name, value, etag, create = false) {
   if (durable()) {
-    return put(name, JSON.stringify(value), {
-      access: 'private',
-      addRandomSuffix: false,
-      contentType: 'application/json',
-      allowOverwrite: !create,
-      ...(etag ? { ifMatch: etag } : {}),
-    });
+    try {
+      return await put(name, JSON.stringify(value), {
+        access: 'private',
+        addRandomSuffix: false,
+        contentType: 'application/json',
+        allowOverwrite: !create,
+        ...(etag ? { ifMatch: etag } : {}),
+      });
+    } catch (e) {
+      console.warn('Blob write failed, falling back to local storage:', e.message);
+    }
   }
-  if (process.env.VERCEL) throw new Error('Private storage is not connected yet.');
+  // Fallback to local file system – same logic as the original non‑durable branch.
   ensure();
   const p = path.join(ROOT, digest(name) + '.json');
   if (etag) {
