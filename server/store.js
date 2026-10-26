@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { put, get, del, list } = require('@vercel/blob');
 
-const ROOT = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+const ROOT = process.env.DATA_DIR || (process.env.VERCEL ? '/tmp/contractcheck-data' : path.join(__dirname, '..', 'data'));
+
 const durable = () => Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 const digest = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const key = (kind, id) => `contractcheck/${kind}/${digest(id)}.json`;
@@ -143,7 +144,8 @@ async function track(name, props = {}) {
 
   const event = { name: eventNames.includes(name) ? name : 'other', props: safe, at: Date.now() };
   console.info('[telemetry]', JSON.stringify(event));
-  await writeObject(key('events', crypto.randomUUID()), event, null, true);
+  // Keep production telemetry in platform logs, preserving Blob operations for reports and credits.
+  if (!durable() && !process.env.VERCEL) await writeObject(key('events', crypto.randomUUID()), event, null, true);
 }
 
 async function metrics() {
@@ -176,4 +178,27 @@ async function cleanupExpired() {
   } while (cursor);
 }
 
-module.exports = { ensure, saveAnalysis, getAnalysis, saveGrant, getGrant, useCredit, track, metrics, durable, cleanupExpired };
+/** Real write/read/delete round trip. The presence of an environment variable is NOT
+ *  evidence that private storage works: a suspended store or revoked token still
+ *  looks "configured" while every write fails. This is the honest check. */
+async function probeStorage() {
+  if (!durable()) {
+    return { durable: false, writable: false,
+      error: process.env.VERCEL ? 'Private storage is not connected yet.' : 'Local storage mode; no storage provider is configured.' };
+  }
+  const name = key('probe', Date.now() + '-' + crypto.randomUUID());
+  const payload = { at: Date.now() };
+  try {
+    await writeObject(name, payload, null, true);
+    const written = await readObject(name);
+    if (!written || written.value?.at !== payload.at) {
+      return { durable: true, writable: false, error: 'A storage write completed but the record could not be read back.' };
+    }
+    await del(name, { ifMatch: written.etag });
+    return { durable: true, writable: true, error: null };
+  } catch (error) {
+    return { durable: true, writable: false, error: String((error && error.message) || error) };
+  }
+}
+
+module.exports = { ensure, saveAnalysis, getAnalysis, saveGrant, getGrant, useCredit, track, metrics, durable, probeStorage, cleanupExpired };
