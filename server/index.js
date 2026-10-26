@@ -395,7 +395,7 @@ async function storageProbe(force = false) {
 }
 app.get('/api/health', async (_req, res) => {
   const probe = await storageProbe();
-  res.json({ ok: true, version: require('../package.json').version, plainLanguageGuide: true, paystack: Boolean(PAYSTACK_SECRET && PAYSTACK_PUBLIC && store.durable()), storage: store.durable(), storageConfigured: store.durable(), storageWritable: probe.writable, storageError: probe.writable ? null : sanitiseStorageError(probe.error), groq: Boolean(process.env.GROQ_API_KEY), openrouter: Boolean(OPENROUTER_API_KEY), tinyfish: Boolean(process.env.TINYFISH_API_KEY), ai_enrichment: externalAiEnabled(), ai_configured: AI_POLICY.configured, ai_model: OPENROUTER_MODEL });
+  res.json({ ok: true, version: require('../package.json').version, plainLanguageGuide: true, paystack: Boolean(PAYSTACK_SECRET && PAYSTACK_PUBLIC && store.durable() && probe.writable), storage: store.durable(), storageConfigured: store.durable(), storageWritable: probe.writable, storageError: probe.writable ? null : sanitiseStorageError(probe.error), groq: Boolean(process.env.GROQ_API_KEY), openrouter: Boolean(OPENROUTER_API_KEY), tinyfish: Boolean(process.env.TINYFISH_API_KEY), ai_enrichment: externalAiEnabled(), ai_configured: AI_POLICY.configured, ai_model: OPENROUTER_MODEL });
 });
 /* On-demand diagnostic. Reachable in production so the real provider error can be seen
  * without dashboard access. Never returns credential values. */
@@ -422,7 +422,7 @@ app.get('/api/config', async (_req, res) => {
   // file-backed store always persists, so a missing provider is not a blocker there.
   const probe = await storageProbe();
   const canPersist = probe.writable || !process.env.VERCEL;
-  res.json({ paystackPublicKey: canPersist ? PAYSTACK_PUBLIC : '', storageWritable: canPersist, prices: PRICES, maxFileMb: MAX_FILE_MB, jurisdictions: ['ZA', 'UK'], aiEnrichmentEnabled: externalAiEnabled(), llmProvider: AI_POLICY.provider, aiMaxChars: AI_POLICY.maxChars, aiGroqFallback: AI_POLICY.groqFallback });
+  res.json({ paystackPublicKey: store.durable() && canPersist ? PAYSTACK_PUBLIC : '', storageAvailable: canPersist, storageWritable: canPersist, prices: PRICES, maxFileMb: MAX_FILE_MB, jurisdictions: ['ZA', 'UK'], aiEnrichmentEnabled: externalAiEnabled(), llmProvider: AI_POLICY.provider, aiMaxChars: AI_POLICY.maxChars, aiGroqFallback: AI_POLICY.groqFallback });
 });
 
 app.post('/api/events', eventLimiter, async (req,res,next) => { try { const { name, props } = req.body || {}; if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' }); await trackSafely(name.slice(0,64), typeof props === 'object' && props ? props : {}); res.json({ ok: true }); } catch (e) { next(e); } });
