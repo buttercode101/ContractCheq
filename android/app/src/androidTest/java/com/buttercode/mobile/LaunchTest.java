@@ -52,6 +52,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;import androidx.test.platfo
    assertEquals("1",js(scenario,"document.querySelectorAll('[data-android-menu]').length"));
    scenario.onActivity(a->a.web.getSettings().setTextZoom(140));Thread.sleep(400);
    assertEquals("false",js(scenario,"document.documentElement.scrollWidth>innerWidth+2"));
+   assertEquals("true",js(scenario,"(()=>{const r=document.querySelector('[data-android-menu]').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1})()"));
    saveScreenshot(scenario,context,"large-text");scenario.onActivity(a->a.web.getSettings().setTextZoom(100));
    js(scenario,"document.querySelector('[data-android-menu]').click()");Thread.sleep(300);
    android.view.accessibility.AccessibilityNodeInfo screen=InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow();assertNotNull(screen);assertFalse("App menu did not open",screen.findAccessibilityNodeInfosByText("App controls").isEmpty());

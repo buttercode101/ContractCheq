@@ -50,6 +50,6 @@ window.__ANDROID_APP__=true;
  }
  function scheduleChrome(){if(!scheduled){scheduled=true;requestAnimationFrame(updateChrome)}}
  document.addEventListener('transitionend',scheduleChrome,true);
- function startChrome(){new MutationObserver(scheduleChrome).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-theme','class','style']});scheduleChrome()}
+ function startChrome(){const style=document.createElement('style');style.textContent='@media(max-width:640px){.header-inner{flex-wrap:wrap;height:auto;min-height:68px;padding-block:12px;row-gap:8px}.header-actions{margin-left:auto;flex-wrap:wrap;max-width:100%;justify-content:flex-end}}';document.head.append(style);new MutationObserver(scheduleChrome).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-theme','class','style']});scheduleChrome()}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startChrome,{once:true});else startChrome();
 })();
