@@ -56,6 +56,7 @@ const upload = multer({
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, standardHeaders: true, message:{error:'Too many scans. Please wait 15 minutes before trying again.'} });
 const payLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, message:{error:'Too many payment requests. Please wait 15 minutes before trying again.'} });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true });
+const diagnosticLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, message:{error:'Too many storage diagnostics. Try again in an hour.'} });
 
 function cleanup(filePath) {
   if (filePath && fs.existsSync(filePath)) {
@@ -375,8 +376,32 @@ async function verifyPaystack(reference) {
   return body;
 }
 
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, version: require('../package.json').version, plainLanguageGuide: true, paystack: Boolean(PAYSTACK_SECRET && PAYSTACK_PUBLIC && store.durable()), storage: store.durable(), groq: Boolean(process.env.GROQ_API_KEY), openrouter: Boolean(OPENROUTER_API_KEY), tinyfish: Boolean(process.env.TINYFISH_API_KEY), ai_enrichment: externalAiEnabled(), ai_configured: AI_POLICY.configured, ai_model: OPENROUTER_MODEL });
+/* Storage health. `storage`/`storageConfigured` only say a provider is configured —
+ *  that is what previously reported healthy throughout a full write outage. The
+ *  probe below actually writes, reads back and deletes, so monitoring sees the truth. */
+const STORAGE_PROBE_TTL = 5 * 60 * 1000;
+let storageProbeCache = { at: 0, result: null };
+const sanitiseStorageError = value => String(value == null ? '' : value)
+  .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+  .replace(/[A-Za-z0-9_-]{24,}/g, '[redacted]')
+  .slice(0, 300);
+async function storageProbe(force = false) {
+  if (!force && storageProbeCache.result && Date.now() - storageProbeCache.at < STORAGE_PROBE_TTL) return storageProbeCache.result;
+  let result;
+  try { result = await store.probeStorage(); }
+  catch (error) { result = { durable: store.durable(), writable: false, error: String((error && error.message) || error) }; }
+  storageProbeCache = { at: Date.now(), result };
+  return result;
+}
+app.get('/api/health', async (_req, res) => {
+  const probe = await storageProbe();
+  res.json({ ok: true, version: require('../package.json').version, plainLanguageGuide: true, paystack: Boolean(PAYSTACK_SECRET && PAYSTACK_PUBLIC && store.durable()), storage: store.durable(), storageConfigured: store.durable(), storageWritable: probe.writable, storageError: probe.writable ? null : sanitiseStorageError(probe.error), groq: Boolean(process.env.GROQ_API_KEY), openrouter: Boolean(OPENROUTER_API_KEY), tinyfish: Boolean(process.env.TINYFISH_API_KEY), ai_enrichment: externalAiEnabled(), ai_configured: AI_POLICY.configured, ai_model: OPENROUTER_MODEL });
+});
+/* On-demand diagnostic. Reachable in production so the real provider error can be seen
+ * without dashboard access. Never returns credential values. */
+app.get('/api/health/storage', diagnosticLimiter, async (_req, res) => {
+  const probe = await storageProbe(true);
+  res.status(probe.writable ? 200 : 503).json({ ok: probe.writable, writable: probe.writable, configured: store.durable(), error: probe.writable ? null : sanitiseStorageError(probe.error), vercelRuntime: Boolean(process.env.VERCEL), hasBlobToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN), hasStoreId: Boolean(process.env.BLOB_STORE_ID) });
 });
 
 app.get('/api/demo/:key', (req,res) => {
