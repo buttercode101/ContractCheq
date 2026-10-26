@@ -71,3 +71,27 @@ test('the storage diagnostic reports success when the round trip works',async()=
     });
   }finally{ store.probeStorage=real; }
 });
+
+test('production configuration pauses new scans and withholds checkout during a private storage outage',async()=>{
+  const real=store.probeStorage;
+  process.env.VERCEL='1';
+  store.probeStorage=async()=>({durable:true,writable:false,error:'Private provider detail'});
+  try{
+    // Force a fresh probe rather than inheriting another test's cached health.
+    await withServer(async base=>{
+      const get=route=>new Promise((resolve,reject)=>{
+        const request=require('node:http').get(base+route,{headers:{host:'contractcheck.online'}},response=>{
+          let text='';response.setEncoding('utf8');response.on('data',chunk=>text+=chunk);
+          response.on('end',()=>resolve({status:response.statusCode,body:JSON.parse(text)}));
+        });request.on('error',reject);
+      });
+      await get('/api/health/storage');
+      const response=await get('/api/config');
+      const body=response.body;
+      assert.equal(response.status,200);
+      assert.equal(body.storageAvailable,false);
+      assert.equal(body.paystackPublicKey,'');
+      assert.ok(!JSON.stringify(body).includes('Private provider detail'));
+    });
+  }finally{store.probeStorage=real;delete process.env.VERCEL;}
+});

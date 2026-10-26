@@ -185,7 +185,7 @@ function App() {
       if(!c.prices||!['single','pack3','pack10'].every(key=>Number.isInteger(c.prices[key])&&c.prices[key]>0))throw new Error('Configuration unavailable');
       if(configRequest.current!==controller||controller.signal.aborted)return;
       setConfig(c);
-      setServerOk('online');
+      setServerOk(c.storageAvailable===false?'unavailable':'online');
     } catch (_) {
       if(configRequest.current===controller&&!controller.signal.aborted)setServerOk('offline');
     } finally {if(configRequest.current===controller)setReconnecting(false);}
@@ -278,6 +278,7 @@ function App() {
 
   var runFile = useCallback(function(file) {
     if (!file) return;
+    if(config.storageAvailable===false){setError('New scans are temporarily paused because private report storage is unavailable. Please retry later. You can still explore the example reports.');return;}
     setError('');
     if(file.size > (config.maxFileMb || 4)*1024*1024){setError('This file is too large. Choose a file under '+(config.maxFileMb || 4)+'MB.');return;}
     if(!/\.(pdf|txt|png|jpg|jpeg|webp|bmp|tif|tiff)$/i.test(file.name)){setError('Choose a PDF, text file, or a clear photo of your document.');return;}
@@ -319,7 +320,7 @@ function App() {
         track('analyze_error', {message: String(e.message || '').slice(0, 80)});
       })
       .finally(function() {finishReportRequest(current);});
-  }, [jurisdiction, perspective, enrichLLM, config.maxFileMb]);
+  }, [jurisdiction, perspective, enrichLLM, config.maxFileMb, config.storageAvailable]);
 
   function onFile(e) {
     var f = e.target.files && e.target.files[0];
@@ -524,7 +525,7 @@ function App() {
           h('div',{className:'drop-area'+(dragging?' dragging':''),onDragOver:e=>{e.preventDefault();if(!scanning)setDragging(true);},onDragLeave:()=>setDragging(false),onDrop:e=>{e.preventDefault();setDragging(false);if(!scanning)runFile(e.dataTransfer.files[0]);},'aria-busy':scanning},
             scanning?h('div',{role:'status','aria-live':'polite',className:'scan-status'},h('span',{className:'spinner'}),h('strong',null,scanMsg),h('p',null,'Keep this page open. Larger files may take a little longer.')):h(React.Fragment,null,
               h('span',{className:'upload-icon'},h(Icon,{name:'upload',size:25})),h('strong',{className:'drop-title'},'Your next signature starts here'),h('p',{className:'desktop-drop-copy'},'Drag your file here, or choose it below.'),
-              h('label',{className:'upload-label'},h(Icon,{name:'upload',size:18}),'Choose a file',h('input',{className:'file-control',type:'file','aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})),
+              h('label',{className:'upload-label'},h(Icon,{name:'upload',size:18}),'Choose a file',h('input',{className:'file-control',type:'file',disabled:config.storageAvailable===false,'aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})),
               h('p',{className:'file-hint'},'PDF, text, or a clear photo · up to '+(config.maxFileMb||4)+' MB'))),
           h('div',{className:'role-field'},
 h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'),
@@ -588,7 +589,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
     ];
     body=h('section',{className:'pricing-content'},h('div',{className:'page-intro'},h('div',{className:'eyebrow'},'One-time payments. No subscription.'),h('h1',{className:'serif'},'A little clarity goes a long way.'),h('p',null,'Start with a free scan. Pay only when you want the full report.')),
       h('div',{className:'pricing-grid'},plans.map(p=>h('article',{key:p.product,className:'plan-card'+(p.featured?' featured':'')},h('div',{className:'plan-top'},h('h2',null,p.label),p.featured&&h('span',{className:'plan-badge'},'Full access')),h('div',{className:'plan-price'},p.price,h('span',null,p.product==='free'?'to start':'once')),h('p',{className:'plan-description'},p.sub),h('ul',null,p.features.map(f=>h('li',{key:f},h(Icon,{name:'check',size:17}),f))),h('button',{disabled:p.product!=='free'&&serverOk!=='online',onClick:()=>p.product==='free'?go('landing'):beginCheckout({amount:p.amount,product:p.product}),className:p.featured?'primary-button':'secondary-button'},p.cta,p.product==='free'?h(Icon,{name:'arrow',size:16}):null),h('p',{className:'plan-note'},p.note)))),
-      h('p',{className:'payment-caption',role:serverOk==='…'?'status':undefined},h(Icon,{name:'lock',size:15}),serverOk==='…'?'Checking checkout availability…':'Payments in ZAR, securely processed by Paystack.'),
+      h('p',{className:'payment-caption',role:serverOk==='…'?'status':undefined},h(Icon,{name:'lock',size:15}),serverOk==='…'?'Checking checkout availability…':serverOk==='unavailable'?'Purchases are paused until private report storage is available.':'Payments in ZAR, securely processed by Paystack.'),
       h('section',{className:'receipt-recovery'},h('h2',null,'Already paid? Restore your receipt'),result&&h('button',{className:'text-button',onClick:()=>go('result')},'Return to current report'),h('p',null,'Use your Paystack reference and receipt email to recover unused credits and retained reports on this device. This verifies your existing payment; it does not charge you again.'),h('form',{onSubmit:restoreReceipt},h('label',{htmlFor:'restore-reference'},'Payment reference'),h('input',{id:'restore-reference',required:true,value:restoreRef,placeholder:'CC-…',autoComplete:'off',onChange:e=>setRestoreRef(e.target.value)}),h('label',{htmlFor:'restore-email'},'Receipt email'),h('input',{id:'restore-email',type:'email',required:true,value:payEmail,autoComplete:'email',onChange:e=>setPayEmail(e.target.value)}),h('button',{className:'secondary-button',type:'submit',disabled:restoring||serverOk!=='online'},restoring?'Verifying receipt…':'Restore existing payment')),recoveredReports&&h('div',{className:'receipt-reports'},h('h3',null,'Your available reports'),h('p',null,'Reports remain available for up to 48 hours after the scan.'),recoveredReports.reports.length?h('ul',null,recoveredReports.reports.map(r=>h('li',{key:r.id},h('button',{type:'button',className:'secondary-button',disabled:unlocking,onClick:()=>reopenPaidReport({analysisId:r.id,reference:recoveredReports.reference,email:recoveredReports.email})},'Reopen report: '+r.title),h('p',null,(r.jurisdiction==='UK'?'United Kingdom':'South Africa')+' · retained until '+new Date(r.expiresAt).toLocaleString('en-ZA'))))):h('p',null,'No retained reports are available for this receipt.'))),
       h('section',{className:'included-section'},h('div',null,h('div',{className:'eyebrow'},'Every full report includes'),h('h2',null,'More context. Better questions.'),h('p',null,'Understand what a clause could mean and what to discuss with your lawyer.')),h('div',{className:'included-grid'},[['document','Your contract in everyday language','Understand common legal wording, payments, dates and conditions, with the original text beside the explanation.'],['note','Practical next steps','Recommendations and impact notes for each issue.'],['download','A report to keep','PDF export, impact notes, and private notes.']].map(x=>h('div',{key:x[1]},h('span',{className:'included-icon'},h(Icon,{name:x[0],size:22})),h('h3',null,x[1]),h('p',null,x[2]))))),
       h('details',{className:'full-report-features'},h('summary',null,'See everything included in every paid report'),h('ul',null,fullFeatures.map(f=>h('li',{key:f},f)))),
@@ -652,7 +653,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       h('nav',{className:'desktop-nav','aria-label':'Main navigation'},nav('Check a contract','landing'),nav('Pricing','pricing'),nav('Saved checklists','checklists'),nav('Privacy','privacy'),nav('Terms','terms'),nav('Contact','contact')),
       h('div',{className:'header-actions'},credits>0&&h('span',{className:'credits-badge'},credits+' '+(credits===1?'credit':'credits')),h('div',{className:'mobile-pricing'},nav('Pricing','pricing')),h('button',{className:'menu-toggle','aria-label':'Open navigation menu','aria-expanded':menuOpen,'aria-controls':'mobile-menu',onClick:()=>{suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setMenuOpen(true);}},h(Icon,{name:'menu',size:22}))))),
     h('div',{className:'app-shell',inert:checkout||menuOpen?'':undefined},
-      (serverOk==='offline'||reconnecting)&&h('div',{className:'service-status',role:'status'},h('div',null,h('strong',null,reconnecting?'Reconnecting…':'Connection needs attention'),h('p',null,reconnecting?'Checking service settings. Please wait a moment.':'Service settings could not load. Retry before starting a scan or payment.')),h('button',{type:'button',className:'secondary-button',disabled:reconnecting,onClick:()=>loadConfiguration(true)},reconnecting?'Reconnecting…':'Retry connection')),
+      (serverOk==='offline'||serverOk==='unavailable'||reconnecting)&&h('div',{className:'service-status',role:'status'},h('div',null,h('strong',null,reconnecting?'Reconnecting…':serverOk==='unavailable'?'New scans and purchases are paused':'Connection needs attention'),h('p',null,reconnecting?'Checking service settings. Please wait a moment.':serverOk==='unavailable'?'Private report storage is temporarily unavailable. Please retry later. Example reports and saved local checklists remain available.':'Service settings could not load. Retry before starting a scan or payment.')),h('button',{type:'button',className:'secondary-button',disabled:reconnecting,onClick:()=>loadConfiguration(true)},reconnecting?'Reconnecting…':'Retry connection')),
       error&&h('div',{className:'error-banner',role:'alert'},h('p',null,error),h('button',{'aria-label':'Dismiss error',onClick:()=>setError('')},h(Icon,{name:'close',size:20}))),
       notice&&h('div',{className:'notice-banner',role:'status'},h('p',null,notice),h('button',{'aria-label':'Dismiss notification',onClick:()=>setNotice('')},h(Icon,{name:'close',size:20}))),
       h('main',{id:'main-content',tabIndex:-1},body),
