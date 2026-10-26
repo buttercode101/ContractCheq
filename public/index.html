@@ -237,6 +237,7 @@ function App() {
   }
   function go(v){screen.current.view=v;cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
   useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
+  if(window.AppHost)window.handleAndroidBack=()=>{if(checkout){setCheckout(null);return true}if(menuOpen){setMenuOpen(false);return true}if(view!=='landing'){go('landing');return true}return false};
   function beginCheckout(opts){if(window.AppHost){setError('Purchases are not enabled in this Android test build. You can use the free preview or restore an existing receipt.');return;}suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
   function rememberPaidReport(full,reference,email){
     setStorageError(!saveLS({lastPaidReport:{analysisId:full._id,reference,email}}));
