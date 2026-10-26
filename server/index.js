@@ -417,8 +417,12 @@ app.get('/api/demo/:key', (req,res) => {
   res.json(analysis);
 });
 
-app.get('/api/config', (_req, res) => {
-  res.json({ paystackPublicKey: store.durable() ? PAYSTACK_PUBLIC : '', prices: PRICES, maxFileMb: MAX_FILE_MB, jurisdictions: ['ZA', 'UK'], aiEnrichmentEnabled: externalAiEnabled(), llmProvider: AI_POLICY.provider, aiMaxChars: AI_POLICY.maxChars, aiGroqFallback: AI_POLICY.groqFallback });
+app.get('/api/config', async (_req, res) => {
+  // Only offer checkout while report storage can actually accept the result. Locally the
+  // file-backed store always persists, so a missing provider is not a blocker there.
+  const probe = await storageProbe();
+  const canPersist = probe.writable || !process.env.VERCEL;
+  res.json({ paystackPublicKey: canPersist ? PAYSTACK_PUBLIC : '', storageWritable: canPersist, prices: PRICES, maxFileMb: MAX_FILE_MB, jurisdictions: ['ZA', 'UK'], aiEnrichmentEnabled: externalAiEnabled(), llmProvider: AI_POLICY.provider, aiMaxChars: AI_POLICY.maxChars, aiGroqFallback: AI_POLICY.groqFallback });
 });
 
 app.post('/api/events', eventLimiter, async (req,res,next) => { try { const { name, props } = req.body || {}; if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' }); await trackSafely(name.slice(0,64), typeof props === 'object' && props ? props : {}); res.json({ ok: true }); } catch (e) { next(e); } });
@@ -430,7 +434,8 @@ app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {
   try {
     const { reference, email, product } = req.body || {};
     if (typeof reference !== 'string' || !/^CC-[A-Za-z0-9-]{10,100}$/.test(reference)) return res.status(400).json({ error: 'Invalid payment reference' });
-    if (!store.durable()) return res.status(503).json({ error: 'Payments unavailable until private storage is connected' });
+    const payProbe = await storageProbe();
+    if (!payProbe.writable && process.env.VERCEL) return res.status(503).json({ error: 'Payments are unavailable until report storage is restored. Please try again later.' });
     const body = await verifyPaystack(reference); const data = body.data || {};
     if (data.status !== 'success') return res.status(402).json({ error: 'Payment not successful' });
     const purchased = data.metadata?.product;
@@ -549,7 +554,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req,res,next)=> { if (req.path.startsWith('/api')) return next(); res.sendFile(path.join(__dirname, '..', 'public', 'index.html')); });
 
 function storageUnavailable(err, res) {
-  if (!/This store has been suspended|BlobStoreSuspended|BlobServiceNotAvailable|BlobServiceUnavailable|Private storage is not connected/.test(String(err?.name) + ' ' + String(err?.message))) return false;
+  if (!/This store has been suspended|BlobStoreSuspended|BlobServiceNotAvailable|BlobServiceUnavailable|Private storage is not connected|suspended|usage quota|quota exceeded|blob/i.test(String(err?.name) + ' ' + String(err?.message))) return false;
   console.error('Private report storage unavailable:', err?.name || 'StorageError');
   res.set('Retry-After', '300').status(503).json({ code: 'STORAGE_UNAVAILABLE', error: 'Private report storage is temporarily unavailable. Please try again later.' });
   return true;
