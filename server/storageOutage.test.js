@@ -4,7 +4,7 @@ process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-outage-'));
 const app=require('./index'),store=require('./store');
 test('storage suspension returns retryable 503 for uploaded and pasted contracts without leaking provider details',async()=>{
  const server=app.listen(0);await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,original=store.saveAnalysis;
- store.saveAnalysis=async()=>{throw Object.assign(new Error('Vercel Blob: This store has been suspended. private-canary'),{name:'BlobStoreSuspendedError'});};
+ store.saveAnalysis=async()=>{throw new Error('Vercel Blob: This store has been suspended. private-canary');};
  try {
   const text='Residential lease: monthly rent R5000, payable on the first day. Notice is one month.';
   const form=new FormData();form.set('file',new Blob([text],{type:'text/plain'}),'synthetic.txt');

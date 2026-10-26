@@ -549,7 +549,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req,res,next)=> { if (req.path.startsWith('/api')) return next(); res.sendFile(path.join(__dirname, '..', 'public', 'index.html')); });
 
 function storageUnavailable(err, res) {
-  if (!/BlobStoreSuspended|BlobServiceNotAvailable|BlobServiceUnavailable|Private storage is not connected/.test(String(err?.name) + ' ' + String(err?.message))) return false;
+  if (!/This store has been suspended|BlobStoreSuspended|BlobServiceNotAvailable|BlobServiceUnavailable|Private storage is not connected/.test(String(err?.name) + ' ' + String(err?.message))) return false;
   console.error('Private report storage unavailable:', err?.name || 'StorageError');
   res.set('Retry-After', '300').status(503).json({ code: 'STORAGE_UNAVAILABLE', error: 'Private report storage is temporarily unavailable. Please try again later.' });
   return true;
