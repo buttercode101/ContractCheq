@@ -237,7 +237,7 @@ function App() {
   }
   function go(v){screen.current.view=v;cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
   useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
-  function beginCheckout(opts){suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
+  function beginCheckout(opts){if(window.AppHost){setError('Purchases are not enabled in this Android test build. You can use the free preview or restore an existing receipt.');return;}suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
   function rememberPaidReport(full,reference,email){
     setStorageError(!saveLS({lastPaidReport:{analysisId:full._id,reference,email}}));
   }
@@ -325,7 +325,7 @@ function App() {
     e.target.value = '';
   }
 
-  const startPay = ({amount, label, product, analysisId})=>{
+  const startPay = ({amount, label, product, analysisId})=>{if(window.AppHost){setError('Purchases are not enabled in this Android test build.');return;}
     setError('');
     const key = config.paystackPublicKey;
     if(!key || !window.PaystackPop){

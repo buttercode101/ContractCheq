@@ -1,0 +1,16 @@
+{
+  "app": "ContractCheck",
+  "packageId": "za.co.buttercode.contractcheck",
+  "packageIdStatus": "provisional until first Play upload",
+  "targetSdk": 36,
+  "minSdk": 26,
+  "versionCode": 1,
+  "signedRelease": false,
+  "physicalDeviceAcceptance": false,
+  "playConsoleSetup": false,
+  "privacyAndDataSafetyReviewed": false,
+  "closedTestingCompleted": false,
+  "productionApproved": false,
+  "billingReviewed": false,
+  "ugcModerationReviewed": null
+}

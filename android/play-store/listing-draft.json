@@ -1,0 +1,13 @@
+{
+  "status": "DRAFT \u2014 do not submit without release-gate review",
+  "title": "ContractCheck",
+  "shortDescription": "Understand contract wording, spot risks and organise your next steps.",
+  "fullDescription": "ContractCheck\n\nUpload a supported document for an online risk preview.\nRead explanations, original wording and practical checklists.\nExport reports available to your existing entitlement.\nThe Android test build does not accept new purchases; legal guidance is not legal advice.\n\nAn internet connection is required for analysis. Do not upload documents you are not authorised to process. Results need human review; obtain qualified legal advice for important decisions.",
+  "category": "Productivity",
+  "supportEmail": null,
+  "privacyPolicyUrl": null,
+  "publisherIdentity": null,
+  "targetAudience": "Owner must choose and verify; not declared",
+  "countries": "Owner must confirm; not configured",
+  "screenshots": "Required: actual Android builds, no mocked product claims"
+}

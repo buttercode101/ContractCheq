@@ -1,0 +1,21 @@
+{
+  "status": "Engineering inventory, not completed Google Play declarations",
+  "local": [
+    "saved checklists",
+    "receipt/credit recovery state",
+    "selected upload before transmission"
+  ],
+  "server": [
+    "documents submitted for analysis",
+    "contract analysis output",
+    "payment/receipt identifiers where restored",
+    "provider processing and security logs"
+  ],
+  "remaining": [
+    "Android billing/consumption model decision and implementation review",
+    "Disclose external AI/document processing from actual live configuration",
+    "Retention/deletion policy and request process tied to actual backend",
+    "Confirm whether account creation exists before answering account-deletion form",
+    "Stable privacy/contact pages and accurate legal-assistance disclosures"
+  ]
+}
