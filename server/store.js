@@ -4,8 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { put, get, del, list } = require('@vercel/blob');
 
-const ROOT = process.env.DATA_DIR || (process.env.VERCEL ? '/tmp/contractcheck-data' : path.join(__dirname, '..', 'data'));
-
+const ROOT = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const durable = () => Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 const digest = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const key = (kind, id) => `contractcheck/${kind}/${digest(id)}.json`;
