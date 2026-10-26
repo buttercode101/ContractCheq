@@ -201,14 +201,14 @@ async function probeStorage() {
 }
 
 async function legacyInventory() {
-  const counts = { grants: 0, activeAnalyses: 0, expiredAnalyses: 0, other: 0, unreadable: 0 };
+  const counts = { grants: 0, activeAnalyses: 0, expiredAnalyses: 0, other: 0, unreadable: 0, legacyGrantPaths: [] };
   let cursor;
   do {
     const batch = await list({ prefix: 'contractcheck/', cursor, limit: 1000 });
     for (const b of batch.blobs) {
       const grant = /^contractcheck\/grants\/[a-f0-9]{64}\.json$/.test(b.pathname);
       const analysis = /^contractcheck\/analyses\/[a-f0-9]{64}\.json$/.test(b.pathname);
-      if (grant) counts.grants++;
+      if (grant) { counts.grants++; counts.legacyGrantPaths.push(b.pathname); }
       else if (analysis && new Date(b.uploadedAt).getTime() >= Date.now() - 48 * 3600000) counts.activeAnalyses++;
       else if (analysis) counts.expiredAnalyses++;
       else counts.other++;
