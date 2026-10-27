@@ -432,7 +432,9 @@ app.get('/api/admin/storage-inventory', diagnosticLimiter, async (req,res,next) 
   const token = process.env.CONTRACTCHECK_STORAGE_TOKEN || '';
   const supplied = String(req.headers.authorization || '').replace(/^Bearer /, '');
   const crypto = require('node:crypto');
-  if (!/^[a-f0-9]{64}$/.test(token) || supplied.length !== token.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(token))) return res.status(403).json({ error: 'Private endpoint' });
+  const suppliedBytes = Buffer.from(supplied), tokenBytes = Buffer.from(token);
+  // timingSafeEqual requires equal UTF-8 byte lengths, not string lengths.
+  if (!/^[a-f0-9]{64}$/.test(token) || suppliedBytes.length !== tokenBytes.length || !crypto.timingSafeEqual(suppliedBytes, tokenBytes)) return res.status(403).json({ error: 'Private endpoint' });
   try { res.json({ ok: true, counts: await store.legacyInventory() }); } catch(e) { next(e); }
 });
 app.get('/api/credits', async (req,res,next)=> { try { const ref = String(req.headers['x-payment-reference']||''); if(!ref) return res.status(401).json({error:'Payment receipt required'}); const grant = await store.getGrant(ref); if(!grant) return res.status(404).json({error:'Receipt not found'}); res.json({credits:grant.remaining}); } catch (e) { next(e); } });
@@ -459,7 +461,18 @@ app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {
   } catch (e) { next(e); }
 });
 
-app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) => {
+// Reject before multipart parsing, OCR or external AI when a production result cannot be saved.
+async function requireWritableStorage(_req, res, next) {
+  try {
+    if (process.env.VERCEL && !(await storageProbe()).writable) {
+      res.set('Retry-After', '300').status(503).json({ code: 'STORAGE_UNAVAILABLE', error: 'Private report storage is temporarily unavailable. Please try again later.' });
+      return;
+    }
+    next();
+  } catch (error) { next(error); }
+}
+
+app.post('/api/analyze', uploadLimiter, requireWritableStorage, upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -511,7 +524,7 @@ app.post('/api/analyze', uploadLimiter, upload.single('file'), async (req, res) 
   } finally { cleanup(file?.path); }
 });
 
-app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
+app.post('/api/analyze-text', uploadLimiter, requireWritableStorage, async (req,res,next)=> {
   try {
     const text = req.body?.text || '';
     const name = req.body?.fileName || 'document';

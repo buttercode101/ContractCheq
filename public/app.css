@@ -251,3 +251,6 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 .document-page h2{font-size:19px;line-height:1.4;margin-top:28px;letter-spacing:-.2px}
 .document-page h2+p{margin-top:10px}
 .document-page a{overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
+
+/* Country abbreviations keep their shape inside the responsive switch. */
+.country-code{flex:none;white-space:nowrap;overflow-wrap:normal}
