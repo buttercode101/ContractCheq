@@ -1,3 +1,5 @@
+![CI](https://github.com/buttercode101/ContractCheq/actions/workflows/production-ci.yml/badge.svg)
+
 # ContractCheck
 
 **Understand the wording. Spot risks. Ask better questions before you sign.**
