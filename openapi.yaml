@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: ContractCheq API
+  version: "1.0"
+paths:
+  /api/upload:
+    post:
+      summary: Upload a contract PDF or text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                jurisdiction:
+                  type: string
+                  enum: [ZA, UK]
+      responses:
+        "200":
+          description: Risk preview JSON
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Validation error
+  /api/report:
+    post:
+      summary: Unlock full report (requires payment token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Full PDF report
+        "402":
+          description: Payment required
