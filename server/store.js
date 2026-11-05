@@ -274,7 +274,9 @@ async function probeStorage() {
     return { durable: false, writable: false,
       error: process.env.VERCEL ? 'Private storage is not connected yet.' : 'Local storage mode; no storage provider is configured.' };
   }
-  const name = key('probe', Date.now() + '-' + crypto.randomUUID());
+  // Probe rows must satisfy the table CHECK (analyses|grants hex names only);
+  // a probe is a disposable analysis-shaped record that deletes itself.
+  const name = key('analyses', 'probe-' + Date.now() + '-' + crypto.randomUUID());
   const payload = { at: Date.now() };
   try {
     await writeObject(name, payload, null, true);
