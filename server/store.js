@@ -5,7 +5,90 @@ const path = require('path');
 const { put, get, del, list } = require('@vercel/blob');
 
 const ROOT = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-const durable = () => Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
+const blobConfigured = () => Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
+// Supabase (Postgres) is the preferred durable backend when configured: it is
+// free-tier, private by default, and the revision UUID gives us the same
+// optimistic-concurrency etag semantics Blob conditional writes provided.
+const SUPABASE_TABLE = () => process.env.SUPABASE_TABLE || 'contractcheck_records';
+const supabaseConfigured = () => Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const durable = () => supabaseConfigured() || blobConfigured();
+
+async function sbRequest(suffix, options = {}) {
+  const res = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${SUPABASE_TABLE()}${suffix}`, {
+    ...options,
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  return { status: res.status, body };
+}
+
+async function sbRead(name) {
+  const { status, body } = await sbRequest(`?select=value,revision&name=eq.${encodeURIComponent(name)}`);
+  if (status === 404) return null;
+  if (status !== 200) throw new Error(`Supabase read failed (${status}): ${JSON.stringify(body).slice(0, 200)}`);
+  const row = Array.isArray(body) ? body[0] : null;
+  return row ? { value: row.value, etag: row.revision } : null;
+}
+
+async function sbWrite(name, value, etag, create) {
+  if (create) {
+    const { status, body } = await sbRequest('', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ name, value }),
+    });
+    if (status === 409) throw new Error('already exists');
+    if (status !== 201 && status !== 200) throw new Error(`Supabase insert failed (${status}): ${JSON.stringify(body).slice(0, 200)}`);
+    return body;
+  }
+  if (etag) {
+    const { status, body } = await sbRequest(`?name=eq.${encodeURIComponent(name)}&revision=eq.${encodeURIComponent(etag)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ value }),
+    });
+    if (status !== 200) throw new Error(`Supabase update failed (${status}): ${JSON.stringify(body).slice(0, 200)}`);
+    if (!Array.isArray(body) || body.length === 0) throw Object.assign(new Error('ETag mismatch'), { code: 'PRECONDITION_FAILED' });
+    return body;
+  }
+  const { status, body } = await sbRequest('', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ name, value }),
+  });
+  if (status !== 201 && status !== 200) throw new Error(`Supabase upsert failed (${status}): ${JSON.stringify(body).slice(0, 200)}`);
+  return body;
+}
+
+async function sbDel(name, etag) {
+  let suffix = `?name=eq.${encodeURIComponent(name)}`;
+  if (etag) suffix += `&revision=eq.${encodeURIComponent(etag)}`;
+  const { status } = await sbRequest(suffix, { method: 'DELETE' });
+  if (status !== 200 && status !== 204) throw new Error(`Supabase delete failed (${status})`);
+}
+
+async function sbList({ prefix = '', cursor, limit = 100 } = {}) {
+  const offset = cursor ? Number(cursor) : 0;
+  const { status, body } = await sbRequest(`?select=name,value&name=like.${encodeURIComponent(prefix + '*')}&order=name&offset=${offset}&limit=${limit}`);
+  if (status !== 200) throw new Error(`Supabase list failed (${status})`);
+  const rows = Array.isArray(body) ? body : [];
+  return {
+    blobs: rows.map(r => ({
+      pathname: r.name,
+      url: r.name,
+      uploadedAt: Number.isFinite(r.value?.at) ? new Date(r.value.at).toISOString() : new Date(0).toISOString(),
+    })),
+    hasMore: rows.length === limit,
+    cursor: rows.length === limit ? String(offset + limit) : undefined,
+  };
+}
 const digest = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const key = (kind, id) => `contractcheck/${kind}/${digest(id)}.json`;
 
@@ -14,6 +97,7 @@ function ensure() {
 }
 
 async function readObject(name) {
+  if (supabaseConfigured()) return sbRead(name);
   if (durable()) {
     const r = await get(name, { access: 'private', useCache: false });
     if (!r) return null;
@@ -32,6 +116,7 @@ async function readObject(name) {
 }
 
 async function writeObject(name, value, etag, create = false) {
+  if (supabaseConfigured()) return sbWrite(name, value, etag, create);
   if (durable()) {
     return put(name, JSON.stringify(value), {
       access: 'private',
@@ -63,7 +148,8 @@ async function getAnalysis(id) {
   const r = await readObject(name);
   if (!r) return null;
   if (r.value.at < Date.now() - 48 * 3600 * 1000) {
-    if (durable()) await del(name, { ifMatch: r.etag });
+    if (supabaseConfigured()) await sbDel(name, r.etag);
+    else if (durable()) await del(name, { ifMatch: r.etag });
     else fs.rmSync(path.join(ROOT, digest(name) + '.json'), { force: true });
     return null;
   }
@@ -171,8 +257,11 @@ async function cleanupExpired() {
   }
   let cursor;
   do {
-    const batch = await list({ prefix: 'contractcheck/analyses/', cursor, limit: 100 });
-    for (const b of batch.blobs) if (new Date(b.uploadedAt).getTime() < cut) await del(b.url);
+    const batch = supabaseConfigured() ? await sbList({ prefix: 'contractcheck/analyses/', cursor, limit: 100 }) : await list({ prefix: 'contractcheck/analyses/', cursor, limit: 100 });
+    for (const b of batch.blobs) if (new Date(b.uploadedAt).getTime() < cut) {
+      if (supabaseConfigured()) await sbDel(b.pathname);
+      else await del(b.url);
+    }
     cursor = batch.hasMore ? batch.cursor : undefined;
   } while (cursor);
 }
@@ -193,7 +282,8 @@ async function probeStorage() {
     if (!written || written.value?.at !== payload.at) {
       return { durable: true, writable: false, error: 'A storage write completed but the record could not be read back.' };
     }
-    await del(name, { ifMatch: written.etag });
+    if (supabaseConfigured()) await sbDel(name, written.etag);
+    else await del(name, { ifMatch: written.etag });
     return { durable: true, writable: true, error: null };
   } catch (error) {
     return { durable: true, writable: false, error: String((error && error.message) || error) };
@@ -204,7 +294,7 @@ async function legacyInventory() {
   const counts = { grants: 0, activeAnalyses: 0, expiredAnalyses: 0, other: 0, unreadable: 0, legacyGrantPaths: [] };
   let cursor;
   do {
-    const batch = await list({ prefix: 'contractcheck/', cursor, limit: 1000 });
+    const batch = supabaseConfigured() ? await sbList({ prefix: 'contractcheck/', cursor, limit: 1000 }) : await list({ prefix: 'contractcheck/', cursor, limit: 1000 });
     for (const b of batch.blobs) {
       const grant = /^contractcheck\/grants\/[a-f0-9]{64}\.json$/.test(b.pathname);
       const analysis = /^contractcheck\/analyses\/[a-f0-9]{64}\.json$/.test(b.pathname);
@@ -213,7 +303,7 @@ async function legacyInventory() {
       else if (analysis) counts.expiredAnalyses++;
       else counts.other++;
       if (grant || (analysis && new Date(b.uploadedAt).getTime() >= Date.now() - 48 * 3600000)) {
-        try { const r = await get(b.pathname, { access: 'private', useCache: false }); if (!r) counts.unreadable++; }
+        try { const r = await readObject(b.pathname); if (!r) counts.unreadable++; }
         catch { counts.unreadable++; }
       }
     }
