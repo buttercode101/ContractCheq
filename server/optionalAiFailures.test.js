@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-ai-failure-'));process.env.AI_ENRICHMENT_ENABLED='true';process.env.OPENROUTER_API_KEY='test-only';process.env.GROQ_API_KEY='test-only';process.env.TINYFISH_API_KEY='test-only';
+for(const key of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE']) delete process.env[key];
 const app=require('./index');
 test('provider rejection, malformed and truncated responses keep the rules report without extra providers or content logs',async()=>{
  const realFetch=global.fetch,realWarn=console.warn,calls=[],warnings=[];let mode='http';
