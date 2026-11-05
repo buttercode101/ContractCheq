@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-ai-readiness-'));
+for(const key of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE']) delete process.env[key];
 process.env.AI_ENRICHMENT_ENABLED='true';process.env.GROQ_API_KEY='test-only';process.env.TINYFISH_API_KEY='test-only';
 const app=require('./index');
 test('an enabled flag without the requested provider keeps UI disabled and forced consent requests local',async()=>{

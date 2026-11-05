@@ -51,7 +51,7 @@ test('an abandoned upload failure cannot appear on another page',async()=>{
 });
 
 test('payment journey requires server approval and recovers a lost response without another credit',async()=>{
- const os=require('node:os');for(const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN'])delete process.env[key];
+ const os=require('node:os');for(const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE'])delete process.env[key];
  process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-ui-payment-'));process.env.PAYSTACK_SECRET_KEY='test-only';
  const store=require('./store'),app=require('./index'),realFetch=global.fetch,wasDurable=store.durable;
  const server=app.listen(0);await new Promise(resolve=>server.once('listening',resolve));const base='http://127.0.0.1:'+server.address().port;

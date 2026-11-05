@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-for (const key of ['VERCEL', 'BLOB_STORE_ID', 'BLOB_READ_WRITE_TOKEN']) delete process.env[key];
+for (const key of ['VERCEL', 'BLOB_STORE_ID', 'BLOB_READ_WRITE_TOKEN', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_TABLE']) delete process.env[key];
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-replay-'));
 const store = require('./store');
 test('receipt replays and concurrent recovery cannot refill spent report credits', async () => {

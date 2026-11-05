@@ -5,7 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 // Build environments may expose production storage. Tests must use only their
 // temporary local ledger, even when invoked by the Vercel build gate.
-for (const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN']) delete process.env[key];
+for (const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE']) delete process.env[key];
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'contractcheck-tests-'));
 process.env.PAYSTACK_SECRET_KEY='test-only';
 const store=require('./store');
