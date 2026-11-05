@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-for(const k of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN']) delete process.env[k];
+for(const k of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE']) delete process.env[k];
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-outage-'));
 const app=require('./index'),store=require('./store');
 test('storage suspension returns retryable 503 for uploaded and pasted contracts without leaking provider details',async()=>{

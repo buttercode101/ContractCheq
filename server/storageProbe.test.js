@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-for (const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN']) delete process.env[key];
+for (const key of ['VERCEL','BLOB_STORE_ID','BLOB_READ_WRITE_TOKEN','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_TABLE']) delete process.env[key];
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'cc-storage-probe-'));
 const app=require('./index');
 const store=require('./store');
