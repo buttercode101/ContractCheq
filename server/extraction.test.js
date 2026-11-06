@@ -39,7 +39,7 @@ test('short signature text is retained rather than rejected or called blank',asy
 
 test('a clear phone-style PNG reaches OCR and retains the clause in the saved report',async()=>{
  const {createCanvas}=require('@napi-rs/canvas'),canvas=createCanvas(1500,420),ctx=canvas.getContext('2d');
- ctx.fillStyle='white';ctx.fillRect(0,0,1500,420);ctx.fillStyle='black';ctx.font='40px sans-serif';
+ ctx.fillStyle='white';ctx.fillRect(0,0,1500,420);ctx.fillStyle='black';ctx.font='40px serif'; // 'sans-serif' silently renders blank on systems without that font family (e.g. Termux), which would make OCR correctly return no text
  ['RESIDENTIAL LEASE AGREEMENT.','Landlord may enter the dwelling without notice.','The tenant shall pay rent of R8000 per month.'].forEach((line,i)=>ctx.fillText(line,50,90+i*100));
  const server=app.listen(0);await new Promise(r=>server.once('listening',r));
  try{
