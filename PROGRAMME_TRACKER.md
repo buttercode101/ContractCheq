@@ -9,7 +9,7 @@ Date: 2026-11-06 · Owner: buttercode101 · Organisation: Buttercode Systems
 | ContractCheck | buttercode101/ContractCheq @ c869c5b | https://contractcheck.online | 128/128 | 81/100 | CONDITIONALLY READY |
 | ScreenNote | buttercode101/ScreenNote @ e15d7a1 | https://screennote-woad.vercel.app | 112/112 | 78/100 | NOT READY for handset claims |
 | Habitat | buttercode101/Habitat @ fb8aefe | https://habitat-za.vercel.app | 116+8+1 | 73/100 | NOT READY as production service |
-| OrderPilot | buttercode101/OrderPilot @ 6b80566 | https://orderpilot-za.vercel.app | 59/59 in final run | 75/100 | NOT READY (tsx-era blocker now resolved in final run; remaining gates below) |
+| OrderPilot | buttercode101/OrderPilot @ 9b0c857 | https://orderpilot-za.vercel.app | 59/59 in final run | 75/100 | NOT READY (better-auth 1.7 breaking migration queued; auth scaffold off) |
 | InvoiceFlow | buttercode101/InvoiceFlow @ 3466e9b | https://invoiceflow-za.vercel.app | 67/67 | 72/100 | NOT READY (vitest/device gates) |
 
 Scores reflect verified evidence on 2026-11-06: 128/128, 112/112, 116+8+1, 59/59, 67/67 with noted gaps. No P0/P1 confirmed at baseline; OrderPilot better-auth critical (GHSA-44jh-23m7-hpcf) recorded as P2 (auth scaffold off; breaking 1.7.18 upgrade not forced).
