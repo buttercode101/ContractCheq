@@ -1,5 +1,5 @@
 ![CI](https://github.com/buttercode101/ContractCheq/actions/workflows/production-ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-128%20passed-brightgreen)
 
 # ContractCheck
 
