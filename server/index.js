@@ -533,6 +533,16 @@ app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
   } catch (e) { next(e); }
 });
 
+app.get('/api/report/:id', async (req,res,next)=> {
+  try {
+    const id = String(req.params.id || '');
+    if (!id || id.length > 200) return res.status(400).json({ error: 'Missing report id' });
+    const stored = await store.getAnalysis(id);
+    if (!stored?.full) return res.status(404).json({ error: 'This preview has expired. Scan again to get a new preview.' });
+    res.json(freeViewOf(stored.full));
+  } catch (e) { next(e); }
+});
+
 app.post('/api/unlock-analysis', payLimiter, async (req,res,next)=> {
   try {
     const { analysisId, reference, grantId, email } = req.body || {};

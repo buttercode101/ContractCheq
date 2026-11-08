@@ -66,7 +66,8 @@ function loadLS() {
       unlocked:Array.isArray(value.unlocked)?value.unlocked.filter(x=>typeof x==='string'):[],
       email:typeof value.email==='string'?value.email:'',paymentRef:typeof value.paymentRef==='string'?value.paymentRef:'',pendingReceipt:typeof value.pendingReceipt==='string'?value.pendingReceipt:'',
       notes:value.notes&&typeof value.notes==='object'&&!Array.isArray(value.notes)?Object.fromEntries(Object.entries(value.notes).filter(([,v])=>typeof v==='string')):{},
-      lastPaidReport:value.lastPaidReport&&['analysisId','reference','email'].every(k=>typeof value.lastPaidReport[k]==='string'&&value.lastPaidReport[k].length>0&&value.lastPaidReport[k].length<300)?value.lastPaidReport:null};
+      lastPaidReport:value.lastPaidReport&&['analysisId','reference','email'].every(k=>typeof value.lastPaidReport[k]==='string'&&value.lastPaidReport[k].length>0&&value.lastPaidReport[k].length<300)?value.lastPaidReport:null,
+      lastFreeScan:value.lastFreeScan&&typeof value.lastFreeScan.id==='string'&&value.lastFreeScan.id.length>0&&value.lastFreeScan.id.length<300&&Number.isFinite(value.lastFreeScan.at)?{id:value.lastFreeScan.id,score:Number(value.lastFreeScan.score)||0,level:typeof value.lastFreeScan.level==='string'?value.lastFreeScan.level:'',docTitle:typeof value.lastFreeScan.docTitle==='string'?value.lastFreeScan.docTitle.slice(0,200):'',at:Number(value.lastFreeScan.at)}:null};
   } catch (e) { return {}; }
 }
 function saveLS(p) {
@@ -136,7 +137,10 @@ function PlainLanguageGuide({guide}) {
     h('p',{className:'guide-caveat'},guide.caveat));
 }
 
-function viewForPath(pathname){const p=(pathname||'/').replace(/^\/+|\/+$/g,'');return p==='faq'?'pricing':['privacy','terms','contact','pricing','checklists'].includes(p)?p:'landing';}
+function viewForPath(pathname){const p=(pathname||'/').replace(/^\/+|\/+$/g,'');if(p.startsWith('report/'))return 'result';return p==='faq'?'pricing':['privacy','terms','contact','pricing','checklists'].includes(p)?p:'landing';}
+function reportIdFromLocation(loc){try{const hash=(loc&&loc.hash)||'';const m=hash.match(/^#\/report\/(.+)$/);if(m)return decodeURIComponent(m[1]);const p=(loc&&loc.pathname)||'';const pm=p.match(/^\/report\/(.+)$/);if(pm)return decodeURIComponent(pm[1]);}catch(e){}return '';}
+function preparePreview(data){if(data&&data.freePreview&&data.issuesLocked){data.issues=(data.issues||[]).concat((data.issuesLocked||[]).map(function(p){return Object.assign({},p,{analysis:'Unlock for full analysis & recommendations.',recommendation:'',impact:'',locked:true});}));data._locked=true;}return data;}
+function ScoreBands({rulesVersion}){return h('details',{className:'score-bands'},h('summary',null,'How the score works'),h('p',{className:'score-bands-intro'},'The gauge uses the same bands as the rule engine. Colour is never the only signal — the band name is always shown. A low score is not a legal clearance.'),h('table',{className:'score-band-table'},h('thead',null,h('tr',null,h('th',null,'Score'),h('th',null,'Band'),h('th',null,'Plain meaning'),h('th',null,'Suggested next step'))),h('tbody',null,h('tr',null,h('td',null,'0–39'),h('td',null,h('strong',{style:{color:'#166653'}},'Low Risk')),h('td',null,'No major red flags under this ruleset'),h('td',null,'Read the key commercial terms; ask the listed questions')),h('tr',null,h('td',null,'40–69'),h('td',null,h('strong',{style:{color:'#a96813'}},'Medium Risk')),h('td',null,'Flagged items worth negotiating'),h('td',null,'Negotiate the flagged items before signing')),h('tr',null,h('td',null,'70–100'),h('td',null,h('strong',{style:{color:'#cb3e36'}},'High Risk')),h('td',null,'Serious flags present'),h('td',null,'Do not sign unchanged; get a second opinion')))),h('p',{className:'score-bands-meta'},'Higher = more risk; not a legal conclusion. Rule pack version: '+(rulesVersion||'see report details')+'.'));}
 
 function App() {
   const [ls] = useState(loadLS);
@@ -170,6 +174,9 @@ function App() {
 
   const [perspective,setPerspective] = useState('neutral');
   const [reconnecting,setReconnecting] = useState(false);
+  const [pendingReceipt,setPendingReceipt] = useState(ls.pendingReceipt || '');
+  const [lastFreeScan,setLastFreeScan] = useState(ls.lastFreeScan || null);
+  const [payRecovery,setPayRecovery] = useState(null);
   const screen=useRef(null);screen.current={view,result};
   const configRequest=useRef(null);
 
@@ -224,6 +231,33 @@ function App() {
     if(current){clearTimeout(current.timer);current.controller.abort();}
     setScanning(false);setScanMsg('');
   }
+  function cancelScan(){
+    cancelReportRequest();
+    setError('');
+    setNotice('Scan cancelled — nothing was charged or saved.');
+  }
+  function setReportHash(id){
+    try{if(window.history&&typeof window.history.replaceState==='function')window.history.replaceState({},'',id?'#/report/'+encodeURIComponent(id):window.location.pathname||'/');}catch(e){}
+  }
+  function rememberFreeScan(data){
+    if(!data||!data._id||data.isDemo||data.isPaid)return;
+    const entry={id:data._id,score:data.score||0,level:data.level||'',docTitle:data.docTitle||'',at:Date.now()};
+    setLastFreeScan(entry);saveLS({lastFreeScan:entry});
+  }
+  async function resumeReport(id){
+    if(!id)return;
+    const current=beginReportRequest();setScanning(true);setScanMsg('Resuming your scan…');setError('');
+    try{
+      const response=await fetch(API+'/api/report/'+encodeURIComponent(id),{signal:current.controller.signal});
+      const data=await response.json();
+      if(reportRequest.current!==current||current.controller.signal.aborted)return;
+      if(!response.ok)throw new Error(data.error||'This preview has expired. Scan again to get a new preview.');
+      const prepared=preparePreview(data);
+      setResult(prepared);setView('result');setReportHash(prepared._id||id);
+      track('analysis_view',{score:prepared.score,level:prepared.level,resumed:true});
+    }catch(e){if(reportRequest.current===current&&!current.controller.signal.aborted)setError(e.message||'This preview has expired. Scan again to get a new preview.');}
+    finally{finishReportRequest(current);}
+  }
   function beginReportRequest(){
     cancelReportRequest();
     const current={controller:new AbortController(),timedOut:false};
@@ -235,8 +269,9 @@ function App() {
     clearTimeout(current.timer);
     if(reportRequest.current===current){reportRequest.current=null;setScanning(false);setScanMsg('');}
   }
-  function go(v){screen.current.view=v;cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
-  useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);setView(viewForPath(window.location.pathname));};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
+  function go(v){screen.current.view=v;cancelReportRequest();const pathname=['landing','result'].includes(v)?'/':'/'+v;if(window.location.pathname!==pathname)window.history.pushState({},'',pathname);if(v==='landing')setReportHash(null);setMenuOpen(false);setError('');setView(v);if(v==='landing')setResult(null);window.scrollTo({top:0,behavior:'instant'});}
+  useEffect(()=>{const onBack=()=>{cancelReportRequest();setMenuOpen(false);setCheckout(null);const id=reportIdFromLocation(window.location);if(id){resumeReport(id);}else{setView(viewForPath(window.location.pathname));}};window.addEventListener('popstate',onBack);return()=>window.removeEventListener('popstate',onBack);},[]);
+  useEffect(()=>{const id=reportIdFromLocation(window.location);if(id&&!result)resumeReport(id);},[]);
   if(window.AppHost)window.handleAndroidBack=()=>{if(checkout){setCheckout(null);return true}if(menuOpen){setMenuOpen(false);return true}if(view==='result'){go('landing');return true}return false};
   if(window.AppHost)window.requestAndroidHome=()=>{go('landing');return true};
   function beginCheckout(opts){if(window.AppHost){setError('Purchases are not enabled in this Android test build. You can use the free preview or restore an existing receipt.');return;}suppressOverlayFocus.current=false;overlayOpener.current=document.activeElement;setCheckout(opts);}
@@ -259,7 +294,13 @@ function App() {
     finally{setUnlocking(false);finishReportRequest(current);}
   }
   function savedReportRecovery(){
-    return loadLS().lastPaidReport&&h('section',{className:'receipt-recovery','aria-label':'Saved paid report'},h('h2',null,'Return to your report'),h('p',null,'Reopen the last report unlocked on this device while it is retained for up to 48 hours. This uses no additional credit. Contract text is not saved in this browser shortcut.'),h('button',{className:'secondary-button',type:'button',disabled:unlocking,onClick:reopenPaidReport},unlocking?'Reopening report…':'Reopen last unlocked report'));
+    const free=lastFreeScan&&Date.now()-lastFreeScan.at<48*3600*1000?lastFreeScan:null;
+    const paid=loadLS().lastPaidReport;
+    const pending=pendingReceipt&&!paymentRef?pendingReceipt:'';
+    return h(React.Fragment,null,
+      free&&h('section',{className:'receipt-recovery resume-card','aria-label':'Resume your last scan'},h('h2',null,'Resume your last scan'),h('p',null,(free.docTitle||'Your last free preview')+' · Score '+free.score+' · '+free.level+'. Reopen it while it is retained for up to 48 hours.'),h('button',{className:'secondary-button',type:'button',disabled:scanning,onClick:()=>resumeReport(free.id)},scanning?'Resuming your scan…':'Resume your last scan')),
+      paid&&h('section',{className:'receipt-recovery','aria-label':'Saved paid report'},h('h2',null,'Return to your report'),h('p',null,'Reopen the last report unlocked on this device while it is retained for up to 48 hours. This uses no additional credit. Contract text is not saved in this browser shortcut.'),h('button',{className:'secondary-button',type:'button',disabled:unlocking,onClick:reopenPaidReport},unlocking?'Reopening report…':'Reopen last unlocked report')),
+      pending&&h('section',{className:'receipt-recovery pending-receipt-strip','aria-label':'Payment may be pending'},h('h2',null,'Did you finish paying?'),h('p',null,'If you paid, don\u2019t pay again. Restore with your reference and email.'),h('p',{className:'pending-reference'},'Reference: ',h('code',null,pending)),h('button',{className:'secondary-button',type:'button',onClick:()=>{setRestoreRef(pending);go('pricing');}},'Restore with reference'),h('button',{className:'text-button',type:'button',onClick:()=>{setPendingReceipt('');saveLS({pendingReceipt:''});}},'Dismiss')));
   }
 
 
@@ -298,17 +339,8 @@ function App() {
         if(reportRequest.current!==current||current.controller.signal.aborted)return;
         if (!x.res.ok) throw new Error(x.data.error || x.data.hint || 'Analysis failed');
         var data = x.data;
-        if (data.freePreview && data.issuesLocked) {
-          data.issues = (data.issues || []).concat((data.issuesLocked || []).map(function(p) {
-            return Object.assign({}, p, {
-              analysis: 'Unlock for full analysis & recommendations.',
-              recommendation: '',
-              impact: '',
-              locked: true
-            });
-          }));
-          data._locked = true;
-        }
+        preparePreview(data);
+        rememberFreeScan(data);setReportHash(data._id);
         setResult(data);
         setView('result');
         track('analysis_view', {score: data.score, level: data.level, jurisdiction: data.jurisdiction || jurisdiction, issues: data.issuesCount});
@@ -339,22 +371,25 @@ function App() {
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){beginCheckout({amount,product,analysisId});return;}
     setPayEmail(email);
     track('paywall_click',{product,amount});
+    const ref='CC-'+crypto.randomUUID();
+    setPendingReceipt(ref);saveLS({pendingReceipt:ref,email});setPayRecovery(null);
     const handler = PaystackPop.setup({
       key,
       email,
       amount,
       currency: 'ZAR',
-      ref: 'CC-'+crypto.randomUUID(),
+      ref,
       metadata: { product, analysisId: analysisId||'' },
       callback: function(response){
         setRestoreRef(response.reference);
-        saveLS({pendingReceipt:response.reference,email});
+        setPendingReceipt(response.reference);saveLS({pendingReceipt:response.reference,email});
         fetchJSON(API+'/api/verify-payment',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({reference: response.reference, email, product})
         }).then(async v=>{
           if(!v.ok) throw new Error(v.error||'Verification failed');
+          setPendingReceipt('');saveLS({pendingReceipt:''});setPayRecovery(null);
           setPaymentRef(v.grantId);
           setCredits(v.credits||0);
           if(product==='single' && analysisId){
@@ -373,10 +408,11 @@ function App() {
             setNotice(v.credits+' report credits added. Upload a document to use them.');window.scrollTo({top:0});
           }
         }).catch(err=>{
+          setPayRecovery({reference:response.reference,email});
           setError('Payment verification or unlock failed: '+err.message+'. Keep your reference: '+response.reference);window.scrollTo({top:0});
         });
       },
-      onClose: function(){ track('pay_close',{product}); }
+      onClose: function(){ track('pay_close',{product}); setPayRecovery({reference:ref,email}); setNotice('Did you finish paying? If you paid, don\u2019t pay again — restore with your reference and email.'); window.scrollTo({top:0}); }
     });
     handler.openIframe();
   };
@@ -523,7 +559,7 @@ function App() {
           h('p',{className:'field-label',id:'jurisdiction-label'},'Which rules apply?'),
           h('div',{className:'country-switch',role:'group','aria-labelledby':'jurisdiction-label'},['ZA','UK'].map(j=>h('button',{key:j,type:'button',disabled:scanning,'aria-pressed':jurisdiction===j,onClick:()=>setJurisdiction(j),className:jurisdiction===j?'selected':''},h('span',{className:'country-code'},j==='ZA'?'ZA':'UK'),h('span',null,j==='ZA'?'South Africa':'United Kingdom'),jurisdiction===j&&h(Icon,{name:'check',size:15})))),
           h('div',{className:'drop-area'+(dragging?' dragging':''),onDragOver:e=>{e.preventDefault();if(!scanning)setDragging(true);},onDragLeave:()=>setDragging(false),onDrop:e=>{e.preventDefault();setDragging(false);if(!scanning)runFile(e.dataTransfer.files[0]);},'aria-busy':scanning},
-            scanning?h('div',{role:'status','aria-live':'polite',className:'scan-status'},h('span',{className:'spinner'}),h('strong',null,scanMsg),h('p',null,'Keep this page open. Larger files may take a little longer.')):h(React.Fragment,null,
+            scanning?h('div',{role:'status','aria-live':'polite',className:'scan-status'},h('span',{className:'spinner'}),h('strong',null,scanMsg),h('p',null,'Keep this page open. Larger files may take a little longer.'),h('button',{type:'button',className:'secondary-button',onClick:cancelScan},'Cancel scan')):h(React.Fragment,null,
               h('span',{className:'upload-icon'},h(Icon,{name:'upload',size:25})),h('strong',{className:'drop-title'},'Your next signature starts here'),h('p',{className:'desktop-drop-copy'},'Drag your file here, or choose it below.'),
               h('label',{className:'upload-label'},h(Icon,{name:'upload',size:18}),'Choose a file',h('input',{className:'file-control',type:'file',disabled:config.storageAvailable===false,'aria-label':'Choose a contract document',accept:'.pdf,.txt,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff',onChange:onFile})),
               h('p',{className:'file-hint'},'PDF, text, or a clear photo · up to '+(config.maxFileMb||4)+' MB'))),
@@ -552,6 +588,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       h('div',{className:'report-summary',id:'report-overview',tabIndex:-1},h('div',{className:'report-title-block'},h('div',{className:'eyebrow'},result.isDemo?'Inside a sample report':'Your contract check'),h('h1',null,result.docTitle||'Contract risk report'),h('p',{className:'report-doc-type'},result.docType||'Contract')),
         h('div',{className:'report-metrics'},h('div',null,h('span',null,'Flagged issues'),h('strong',null,result.issuesCount||0)),h('div',null,h('span',null,'Financial exposure'),h('strong',{className:'exposure-value'},result.exposure||'Not estimated'))),h(Gauge,{score:result.score,level:result.level}),
         h('p',{className:'score-explainer'},'A higher score means more potential risk. This is an automated assessment, not a legal conclusion.'),
+        h('details',{className:'score-bands'},h('summary',null,'How the score works'),h('p',{className:'score-bands-intro'},'The gauge uses the same bands as the rule engine. Colour is never the only signal — the band name is always shown. A low score is not a legal clearance.'),h('table',{className:'score-band-table'},h('thead',null,h('tr',null,h('th',null,'Score'),h('th',null,'Band'),h('th',null,'Plain meaning'),h('th',null,'Suggested next step'))),h('tbody',null,h('tr',null,h('td',null,'0–39'),h('td',null,h('strong',{style:{color:'#166653'}},'Low Risk')),h('td',null,'No major red flags under this ruleset'),h('td',null,'Read the key commercial terms; ask the listed questions')),h('tr',null,h('td',null,'40–69'),h('td',null,h('strong',{style:{color:'#a96813'}},'Medium Risk')),h('td',null,'Flagged items worth negotiating'),h('td',null,'Negotiate the flagged items before signing')),h('tr',null,h('td',null,'70–100'),h('td',null,h('strong',{style:{color:'#cb3e36'}},'High Risk')),h('td',null,'Serious flags present'),h('td',null,'Do not sign unchanged; get a second opinion')))),h('p',{className:'score-bands-meta'},'Higher = more risk; not a legal conclusion. Rule pack version: '+(result.rulesVersion||'see report details')+'.')),
         result.decision&&h('section',{className:'decision-brief'},h('div',{className:'eyebrow'},'Bottom line'),h('h2',null,result.decision),h('div',{className:'decision-grid'},
           h('div',null,h('span',null,'Priority issues'),h('strong',null,String(result.criticalCount||0)+' critical/high')),
           h('div',null,h('span',null,'Money at stake'),h('strong',null,result.exposure||'Not safely quantifiable')),
@@ -656,6 +693,7 @@ h('label',{className:'field-label',htmlFor:'perspective'},'Your role (optional)'
       (serverOk==='offline'||serverOk==='unavailable'||reconnecting)&&h('div',{className:'service-status',role:'status'},h('div',null,h('strong',null,reconnecting?'Reconnecting…':serverOk==='unavailable'?'New scans and purchases are paused':'Connection needs attention'),h('p',null,reconnecting?'Checking service settings. Please wait a moment.':serverOk==='unavailable'?'Private report storage is temporarily unavailable. Please retry later. Example reports and saved local checklists remain available.':'Service settings could not load. Retry before starting a scan or payment.')),h('button',{type:'button',className:'secondary-button',disabled:reconnecting,onClick:()=>loadConfiguration(true)},reconnecting?'Reconnecting…':'Retry connection')),
       error&&h('div',{className:'error-banner',role:'alert'},h('p',null,error),h('button',{'aria-label':'Dismiss error',onClick:()=>setError('')},h(Icon,{name:'close',size:20}))),
       notice&&h('div',{className:'notice-banner',role:'status'},h('p',null,notice),h('button',{'aria-label':'Dismiss notification',onClick:()=>setNotice('')},h(Icon,{name:'close',size:20}))),
+      payRecovery&&h('section',{className:'receipt-recovery pay-recovery-panel','aria-label':'Payment recovery'},h('h2',null,'Did you finish paying?'),h('p',null,'If you paid, don\u2019t pay again. Restore with your reference and email.'),h('p',{className:'pending-reference'},'Reference: ',h('code',null,payRecovery.reference)),h('button',{className:'secondary-button',type:'button',onClick:()=>{setRestoreRef(payRecovery.reference);go('pricing');}},'Restore with reference'),h('button',{className:'text-button',type:'button',onClick:()=>setPayRecovery(null)},'Dismiss')),
       h('main',{id:'main-content',tabIndex:-1},body),
       h('footer',{className:'site-footer'},h('div',null,h('span',{className:'footer-brand'},'ContractCheck'),h('p',null,'A clearer view, before you sign.')),h('div',{className:'footer-links'},h('button',{onClick:()=>go('privacy')},'Privacy'),h('button',{onClick:()=>go('terms')},'Terms'),h('span',null,'© '+new Date().getFullYear())))),
     menuOpen&&h('div',{className:'modal-backdrop menu-backdrop',onClick:e=>{if(e.target===e.currentTarget)setMenuOpen(false);}},h('section',{id:'mobile-menu',role:'dialog','aria-modal':true,'aria-labelledby':'menu-title',className:'mobile-menu',onKeyDown:trapFocus},h('div',{className:'menu-heading'},h('h2',{id:'menu-title'},'Explore ContractCheck'),h('button',{'aria-label':'Close navigation menu',className:'icon-button',onClick:()=>setMenuOpen(false)},h(Icon,{name:'close'}))),h('nav',{'aria-label':'Mobile navigation'},[['Check a contract','landing'],['Pricing','pricing'],['Saved checklists','checklists'],['Privacy','privacy'],['Terms','terms'],['Contact','contact']].map(x=>h('button',{key:x[1],onClick:()=>go(x[1]),'aria-current':view===x[1]?'page':undefined},x[0],h(Icon,{name:'arrow',size:18})))),h('p',null,'South Africa & UK · Check & flag only'))),

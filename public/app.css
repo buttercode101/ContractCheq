@@ -251,3 +251,11 @@ h1,h2,h3{text-wrap:balance}button,input,textarea,select{font:inherit}
 .document-page h2{font-size:19px;line-height:1.4;margin-top:28px;letter-spacing:-.2px}
 .document-page h2+p{margin-top:10px}
 .document-page a{overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
+.score-bands{grid-column:1/-1;margin-top:12px;border-top:1px solid var(--line);padding-top:14px}
+.score-bands summary{min-height:48px;align-content:center;cursor:pointer;font-weight:600;color:var(--accent)}
+.score-bands-intro,.score-bands-meta{font-size:14px;line-height:1.6;color:var(--muted);margin-top:10px}
+.score-band-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px;line-height:1.55}
+.score-band-table th,.score-band-table td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+.score-band-table th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pending-reference{font-size:14px}.pending-reference code{overflow-wrap:anywhere}
+.scan-status .secondary-button{margin-top:12px;min-height:48px}
