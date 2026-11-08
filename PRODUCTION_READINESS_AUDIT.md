@@ -30,7 +30,7 @@ Canonical domain: https://contractcheck.online · Deployment: Vercel (`server: V
 Node engine mismatch: repo requires 24.x, test env is v26.3.1 — tests pass; CI runs 24.
 
 ## Test inventory
-23 test files in `server/*.test.js`; `npm test` = 128 tests, 128 pass, 0 fail (2026-11-06, after fix).
+23 test files in `server/*.test.js`; `npm test` = 134 tests, 134 pass, 0 fail (2026-11-08, final phase).
 `npm run test:smoke` = SMOKE OK. Browser verification workflow (Playwright chromium/firefox/webkit) green at HEAD.
 
 ## Deployment map

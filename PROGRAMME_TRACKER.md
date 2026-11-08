@@ -6,7 +6,7 @@ Date: 2026-11-06 · Owner: buttercode101 · Organisation: Buttercode Systems
 
 | Product | Repo | Live URL | Tests | Score | Verdict |
 |---|---|---|---|---|---|
-| ContractCheck | buttercode101/ContractCheq @ c869c5b | https://contractcheck.online | 128/128 | 81/100 | CONDITIONALLY READY |
+| ContractCheck | buttercode101/ContractCheq @ c869c5b | https://contractcheck.online | 134/134 | 81/100 | CONDITIONALLY READY |
 | ScreenNote | buttercode101/ScreenNote @ e15d7a1 | https://screennote-woad.vercel.app | 112/112 | 78/100 | NOT READY for handset claims |
 | Habitat | buttercode101/Habitat @ fb8aefe | https://habitat-za.vercel.app | 116+8+1 | 73/100 | NOT READY as production service |
 | OrderPilot | buttercode101/OrderPilot @ 9b0c857 | https://orderpilot-za.vercel.app | 59/59 in final run | 75/100 | NOT READY (better-auth 1.7 breaking migration queued; auth scaffold off) |

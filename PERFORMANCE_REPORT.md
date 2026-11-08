@@ -4,7 +4,7 @@ Date: 2026-11-06 · Env: Termux, Node v26.3.1 (repo target 24.x).
 
 ## Observed
 - Live `https://contractcheck.online/`: HTTP 200 in 0.30s (single curl, warm Vercel edge, cpt1).
-- Test suite runtime: full `npm test` 14.3s (128 tests, incl. OCR).
+- Test suite runtime: full `npm test` 14.3s (134 tests, incl. OCR).
 - No Lighthouse run executed in this pass → NO Lighthouse scores claimed.
 
 ## Targets (not yet measured)
