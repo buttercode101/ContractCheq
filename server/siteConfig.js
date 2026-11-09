@@ -7,8 +7,9 @@ function canonicalHost(req, res, next) {
   if (!process.env.VERCEL || String(req.headers.host || '').toLowerCase() === SITE_HOST) return next();
   // Vercel Cron can call a generated deployment URL. This is a private
   // maintenance endpoint, never a second public entry point to the product.
-  if (req.method === 'GET' && req.path === '/api/cleanup' && process.env.CRON_SECRET &&
-      req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`) return next();
+  const { isBearerAuthorized } = require('./secretCompare');
+  if (req.method === 'GET' && req.path === '/api/cleanup' &&
+      isBearerAuthorized(req.headers.authorization, process.env.CRON_SECRET)) return next();
   return res.status(404).set({'Cache-Control':'no-store','X-Robots-Tag':'noindex'}).end();
 }
 
