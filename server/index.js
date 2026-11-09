@@ -16,7 +16,8 @@ const { validatePerspective } = require('./reportContext');
 const DEMO_SAMPLES = require('./demoSamples');
 const store = require('./store');
 const { SITE_ORIGIN, canonicalHost } = require('./siteConfig');
-const { isBearerAuthorized } = require('./secretCompare');
+const { isBearerAuthorized, timingSafeEqualString } = require('./secretCompare');
+const crypto = require('node:crypto');
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_FILE_MB = process.env.VERCEL ? 4 : (Number(process.env.MAX_FILE_MB) || 12);
@@ -38,6 +39,9 @@ app.use(canonicalHost);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use((_req,res,next)=>{res.set(require('./securityHeaders').securityHeaders());next();});
 app.use('/api', (_req,res,next)=>{res.set('Cache-Control','no-store');next();});
+// Paystack webhook needs the exact raw bytes for HMAC-SHA512 verification, so
+// mount the raw parser for this route only, BEFORE express.json consumes it.
+app.use('/api/paystack-webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -458,6 +462,57 @@ app.post('/api/verify-payment', payLimiter, async (req,res,next)=> {
     }))).filter(Boolean);
     await trackSafely('payment_verified', { product: purchased, amount: Number(data.amount) });
     res.json({ ok: true, grantId: reference, product: purchased, credits: grant.remaining, email: customer, amount: Number(data.amount), reports });
+  } catch (e) { next(e); }
+});
+
+// In-memory webhook event dedupe (best-effort on serverless: the write-once
+// store.saveGrant below is the durable idempotency guarantee across restarts).
+const seenWebhookEvents = new Set();
+const MAX_SEEN_WEBHOOK_EVENTS = 1000;
+
+app.post('/api/paystack-webhook', async (req,res,next)=> {
+  try {
+    if (!PAYSTACK_SECRET) return res.status(503).json({ error: 'Payments are not configured.' });
+    const signature = String(req.headers['x-paystack-signature'] || '');
+    if (!signature) return res.status(400).json({ error: 'Missing webhook signature' });
+    const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body || ''));
+    const expected = crypto.createHmac('sha512', PAYSTACK_SECRET).update(raw).digest('hex');
+    if (!timingSafeEqualString(signature, expected)) return res.status(400).json({ error: 'Invalid webhook signature' });
+    let payload;
+    try { payload = JSON.parse(raw.toString('utf8')); } catch (_) { return res.status(400).json({ error: 'Invalid webhook payload' }); }
+    const event = payload && typeof payload.event === 'string' ? payload.event : '';
+    const data = payload && typeof payload.data === 'object' && payload.data ? payload.data : {};
+    const eventId = payload && (payload.id ?? data.id) != null ? String(payload.id ?? data.id) : null;
+    const rawReference = String(data.reference || data.metadata?.reference || payload?.reference || '');
+    // Log event id only (never payload bodies, emails, or signatures) for dedupe/audit.
+    console.log('[paystack-webhook]', JSON.stringify({ event, eventId, reference: rawReference || null }));
+    if (!['charge.success', 'invoice.payment_succeeded'].includes(event)) {
+      return res.json({ ok: true, ignored: true, event: event || null });
+    }
+    const dedupeKey = eventId || (rawReference ? `${event}:${rawReference}` : null);
+    if (dedupeKey && seenWebhookEvents.has(dedupeKey)) return res.json({ ok: true, duplicate: true });
+    if (!/^CC-[A-Za-z0-9-]{10,100}$/.test(rawReference)) {
+      return res.json({ ok: true, ignored: true, reason: 'non-contractcheck reference' });
+    }
+    const payProbe = await storageProbe();
+    if (!payProbe.writable && process.env.VERCEL) return res.status(503).json({ error: 'Payments are unavailable until report storage is restored. Please try again later.' });
+    // Never trust the webhook payload alone: re-verify server-side with Paystack.
+    const body = await verifyPaystack(rawReference);
+    const verified = body.data || {};
+    if (verified.status !== 'success') return res.status(402).json({ error: 'Payment not successful' });
+    const purchased = verified.metadata?.product;
+    if (!Object.hasOwn(PRICES, purchased) || Number(verified.amount) !== PRICES[purchased] || verified.currency !== 'ZAR') {
+      return res.status(402).json({ error: 'Payment product mismatch' });
+    }
+    const customer = String(verified.customer?.email || '').toLowerCase().trim();
+    if (!customer) return res.status(402).json({ error: 'Payment customer email missing' });
+    const grant = await store.saveGrant(rawReference, { email: customer, product: purchased, amount: Number(verified.amount), credits: purchased === 'pack10' ? 10 : purchased === 'pack3' ? 3 : 1 });
+    if (dedupeKey) {
+      seenWebhookEvents.add(dedupeKey);
+      if (seenWebhookEvents.size > MAX_SEEN_WEBHOOK_EVENTS) seenWebhookEvents.delete(seenWebhookEvents.values().next().value);
+    }
+    await trackSafely('payment_verified', { product: purchased, amount: Number(verified.amount) });
+    res.json({ ok: true, granted: true, grantId: rawReference, product: purchased, credits: grant.remaining, amount: Number(verified.amount) });
   } catch (e) { next(e); }
 });
 
