@@ -2,10 +2,116 @@ openapi: 3.0.3
 info:
   title: ContractCheq API
   version: "1.0"
+  description: >-
+    ContractCheck SA API. Free preview is returned by analyze/report endpoints;
+    the full paid report is only returned by /api/unlock-analysis after a
+    verified Paystack receipt (reference + matching email) has spent a credit.
+    GET /api/report/{id} returns the free preview unauthenticated; with
+    x-payment-reference (+ optional x-receipt-email) it returns the full report
+    only for a grant that has already unlocked that report, otherwise 404.
 paths:
-  /api/upload:
+  /api/health:
+    get:
+      summary: Service and storage health
+      responses:
+        "200":
+          description: Health status JSON
+  /api/health/storage:
+    get:
+      summary: On-demand storage write/read/delete probe (rate limited)
+      responses:
+        "200":
+          description: Storage writable
+        "503":
+          description: Storage not writable
+  /api/config:
+    get:
+      summary: Public client configuration (prices, paystackPublicKey, limits)
+      responses:
+        "200":
+          description: Config JSON
+  /api/demo/{key}:
+    get:
+      summary: Run a built-in demo sample through the rule engine
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full demo analysis
+        "404":
+          description: Example not found
+  /api/events:
     post:
-      summary: Upload a contract PDF or text
+      summary: Fire-and-forget telemetry event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                props:
+                  type: object
+      responses:
+        "200":
+          description: Accepted
+        "400":
+          description: name required
+  /api/credits:
+    get:
+      summary: Remaining credits for a payment receipt
+      parameters:
+        - name: x-payment-reference
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Remaining credits
+        "401":
+          description: Payment receipt required
+        "404":
+          description: Receipt not found
+  /api/verify-payment:
+    post:
+      summary: Verify a Paystack transaction and create a report-credit grant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference, email]
+              properties:
+                reference:
+                  type: string
+                  pattern: '^CC-[A-Za-z0-9-]{10,100}$'
+                email:
+                  type: string
+                product:
+                  type: string
+                  enum: [single, pack3, pack10]
+      responses:
+        "200":
+          description: Verified grant JSON
+        "400":
+          description: Invalid payment reference
+        "402":
+          description: Payment not successful / product mismatch
+        "403":
+          description: Receipt email mismatch
+        "503":
+          description: Storage unavailable
+  /api/analyze:
+    post:
+      summary: Upload a contract file (PDF/image/txt) and return a free risk preview
       requestBody:
         required: true
         content:
@@ -19,29 +125,119 @@ paths:
                 jurisdiction:
                   type: string
                   enum: [ZA, UK]
+                perspective:
+                  type: string
+                enrich:
+                  type: string
       responses:
         "200":
-          description: Risk preview JSON
-          content:
-            application/json:
-              schema:
-                type: object
+          description: Free preview JSON (full report locked)
         "400":
-          description: Validation error
-  /api/report:
+          description: No file / validation error
+        "413":
+          description: File too large
+        "422":
+          description: Could not extract enough text
+  /api/analyze-text:
     post:
-      summary: Unlock full report (requires payment token)
+      summary: Analyze pasted contract text and return a free risk preview
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [text]
               properties:
-                token:
+                text:
+                  type: string
+                fileName:
+                  type: string
+                jurisdiction:
+                  type: string
+                  enum: [ZA, UK]
+                perspective:
                   type: string
       responses:
         "200":
-          description: Full PDF report
+          description: Free preview JSON
+        "400":
+          description: Validation error
+        "413":
+          description: Text too large
+  /api/report/{id}:
+    get:
+      summary: Resume a saved scan. Free preview only unless an unlocking grant credential is supplied.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-payment-reference
+          in: header
+          required: false
+          description: Payment receipt reference; full report only if this grant already unlocked this report.
+          schema:
+            type: string
+        - name: x-receipt-email
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Free preview, or full report for an unlocking grant
+        "400":
+          description: Missing/invalid report id
+        "404":
+          description: Report not found, expired, or not unlocked by the supplied grant (no existence leak)
+  /api/unlock-analysis:
+    post:
+      summary: Spend a verified credit to unlock the full report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [analysisId]
+              properties:
+                analysisId:
+                  type: string
+                reference:
+                  type: string
+                grantId:
+                  type: string
+                email:
+                  type: string
+                reopenOnly:
+                  type: boolean
+      responses:
+        "200":
+          description: Full paid report JSON
+        "400":
+          description: Missing analysisId
         "402":
-          description: Payment required
+          description: Payment receipt required / no credits remaining
+        "403":
+          description: Invalid receipt/email, or reopenOnly for a report this receipt did not unlock
+        "404":
+          description: Analysis expired
+  /api/cleanup:
+    get:
+      summary: Delete expired analyses (Bearer CRON_SECRET, timing-safe compared)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Cleanup complete
+        "401":
+          description: Unauthorized
+components:
+  securitySchemes:
+    bearerAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Bearer <CRON_SECRET>'

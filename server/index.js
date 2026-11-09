@@ -16,6 +16,7 @@ const { validatePerspective } = require('./reportContext');
 const DEMO_SAMPLES = require('./demoSamples');
 const store = require('./store');
 const { SITE_ORIGIN, canonicalHost } = require('./siteConfig');
+const { isBearerAuthorized } = require('./secretCompare');
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_FILE_MB = process.env.VERCEL ? 4 : (Number(process.env.MAX_FILE_MB) || 12);
@@ -536,9 +537,27 @@ app.post('/api/analyze-text', uploadLimiter, async (req,res,next)=> {
 app.get('/api/report/:id', async (req,res,next)=> {
   try {
     const id = String(req.params.id || '');
-    if (!id || id.length > 200) return res.status(400).json({ error: 'Missing report id' });
+    if (!id || id.length > 200 || /[/\\]/.test(id) || id.includes('..')) return res.status(400).json({ error: 'Missing report id' });
     const stored = await store.getAnalysis(id);
     if (!stored?.full) return res.status(404).json({ error: 'This preview has expired. Scan again to get a new preview.' });
+    // IDOR hardening (P0-3): this endpoint must never disclose a full/paid report
+    // to an unauthenticated caller. The frontend resume flow (public/index.html)
+    // calls it with NO credentials and relies on the free preview only, so full
+    // auth here would break the demo/resume flow. Minimal check consistent with
+    // the existing grant model (/api/credits + /api/unlock-analysis):
+    //  - no credential  -> free preview only (freeViewOf strips paid fields)
+    //  - credential supplied (x-payment-reference, optional x-receipt-email)
+    //    -> full report only if the grant exists, email matches when supplied,
+    //       and the grant has already unlocked this analysisId; otherwise the
+    //       same generic 404 as for a missing report (no existence leak).
+    const reference = String(req.headers['x-payment-reference'] || '');
+    if (reference) {
+      const grant = await store.getGrant(reference);
+      const email = String(req.headers['x-receipt-email'] || '').toLowerCase().trim();
+      const unlocked = grant && (!email || String(grant.email || '').toLowerCase().trim() === email) && Array.isArray(grant.unlocked) && grant.unlocked.includes(id);
+      if (!unlocked) return res.status(404).json({ error: 'This preview has expired. Scan again to get a new preview.' });
+      return res.json({ ...stored.full, isPaid: true });
+    }
     res.json(freeViewOf(stored.full));
   } catch (e) { next(e); }
 });
@@ -562,7 +581,7 @@ app.post('/api/unlock-analysis', payLimiter, async (req,res,next)=> {
 });
 
 app.get('/api/cleanup', async (req,res,next)=> {
-  if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
+  if (!isBearerAuthorized(req.headers.authorization, process.env.CRON_SECRET)) return res.status(401).end();
   try { await store.cleanupExpired(); res.json({ ok: true }); } catch (e) { next(e); }
 });
 
@@ -594,4 +613,4 @@ if (require.main === module) app.listen(PORT, () => {
 });
 
 module.exports = app;
-module.exports.__internal = { redactSensitiveText, externalAiEnabled, freeViewOf, extractFromImage };
+module.exports.__internal = { redactSensitiveText, externalAiEnabled, freeViewOf, extractFromImage, isBearerAuthorized };
